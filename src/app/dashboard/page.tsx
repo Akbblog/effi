@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,9 +7,16 @@ import TruckConfigForm from '@/components/TruckConfigForm';
 import CargoInputForm from '@/components/CargoInputForm';
 import ThreeViewer from '@/components/ThreeViewer';
 import TwoViewer from '@/components/TwoViewer';
-import { Cuboid, Trash2, ArrowRight, Save, History, Loader2, Play } from 'lucide-react';
+import AnimatedBackground from '@/components/ui/AnimatedBackground';
+import Logo from '@/components/ui/Logo';
+import StatCard from '@/components/ui/StatCard';
+import {
+    Trash2, Save, History, Loader2, Play, LogOut,
+    Gauge, Package, PackageX, Box, Shield, ChevronRight
+} from 'lucide-react';
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
@@ -72,7 +78,7 @@ export default function Dashboard() {
             });
             if (res.ok) {
                 alert("Load saved successfully!");
-                fetchHistory(); // Refresh
+                fetchHistory();
             } else {
                 alert("Failed to save load.");
             }
@@ -102,186 +108,298 @@ export default function Dashboard() {
     }, [status]);
 
     if (status === 'loading') {
-        return <div className="min-h-screen flex items-center justify-center text-slate-400">Loading workspace...</div>
+        return (
+            <div className="min-h-screen flex items-center justify-center relative">
+                <AnimatedBackground variant="minimal" />
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center gap-4"
+                >
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                    <p className="text-slate-400 text-sm">Loading workspace...</p>
+                </motion.div>
+            </div>
+        );
     }
 
     if (!session) return null;
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-slate-100 p-4 md:p-8 font-sans">
+        <main className="min-h-screen text-slate-100 relative">
+            <AnimatedBackground variant="minimal" />
 
-            {/* Header */}
-            <header className="mb-8 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                        <Cuboid className="text-white w-6 h-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">EFFI <span className="text-emerald-500 text-sm font-normal uppercase tracking-wider ml-1">Load Optimizer</span></h1>
-                        <p className="text-slate-400 text-xs">Maximize your logistics efficiency</p>
-                    </div>
-                </div>
+            <div className="relative z-10 p-4 md:p-6 lg:p-8">
+                {/* Header */}
+                <motion.header
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 flex items-center justify-between"
+                >
+                    <Logo size="md" />
 
-                <div className="flex items-center gap-4 text-sm text-slate-400">
-                    <div className="hidden md:flex flex-col items-end">
-                        <span className="text-slate-200 font-medium">{session.user?.name}</span>
-                        <span className="text-xs text-emerald-400/80">{session.user?.email}</span>
+                    <div className="flex items-center gap-4">
+                        <div className="hidden md:flex flex-col items-end">
+                            <span className="text-slate-200 font-medium text-sm">{session.user?.name}</span>
+                            <span className="text-xs text-slate-500">{session.user?.email}</span>
+                        </div>
+
                         {/* @ts-ignore */}
                         {session.user.role === 'admin' && (
-                            <button onClick={() => router.push('/admin')} className="text-[10px] text-blue-400 hover:underline mt-1">
-                                Go to Admin Panel
-                            </button>
+                            <motion.button
+                                onClick={() => router.push('/admin')}
+                                className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Shield className="w-3 h-3" />
+                                Admin
+                            </motion.button>
                         )}
+
+                        <motion.button
+                            onClick={() => signOut({ callbackUrl: '/' })}
+                            className="btn-ghost text-slate-400"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            <LogOut className="w-4 h-4" />
+                            <span className="hidden sm:inline">Sign Out</span>
+                        </motion.button>
                     </div>
-                    <button
-                        onClick={() => signOut({ callbackUrl: '/' })}
-                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition"
+                </motion.header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 max-w-[1800px] mx-auto">
+
+                    {/* LEFT COLUMN: Controls */}
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="space-y-5"
                     >
-                        Sign Out
-                    </button>
-                </div>
-            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 max-w-[1600px] mx-auto">
+                        {/* Actions Bar */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <motion.button
+                                onClick={() => setShowHistory(!showHistory)}
+                                className="btn-secondary py-3"
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                            >
+                                <History className="w-4 h-4 text-emerald-400" />
+                                {showHistory ? 'Hide' : 'History'}
+                            </motion.button>
+                            <motion.button
+                                onClick={saveLoad}
+                                disabled={saving || cargoItems.length === 0}
+                                className="btn-primary py-3"
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
+                            >
+                                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                Save
+                            </motion.button>
+                        </div>
 
-                {/* LEFT COLUMN: Controls */}
-                <div className="space-y-6">
-
-                    {/* Actions Bar */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <button
-                            onClick={() => setShowHistory(!showHistory)}
-                            className="flex items-center justify-center gap-2 bg-slate-800/80 hover:bg-slate-800 py-3 rounded-xl border border-slate-700 transition-all text-sm font-medium"
-                        >
-                            <History className="w-4 h-4 text-emerald-400" />
-                            {showHistory ? 'Hide History' : 'Load History'}
-                        </button>
-                        <button
-                            onClick={saveLoad}
-                            disabled={saving || cargoItems.length === 0}
-                            className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            Save Load
-                        </button>
-                    </div>
-
-                    {/* History Popover (Inline) */}
-                    {showHistory && (
-                        <div className="glass-card p-4 rounded-xl border border-emerald-500/30 max-h-[300px] overflow-y-auto">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase mb-3">Saved Loads</h3>
-                            {loadHistory.length === 0 ? (
-                                <div className="text-center text-xs text-slate-600 italic py-4">No saved loads found.</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {loadHistory.map((load: any) => (
-                                        <div key={load._id} className="flex items-center justify-between p-2 bg-slate-900/40 rounded-lg hover:bg-slate-900/60 transition group cursor-pointer" onClick={() => restoreLoad(load)}>
-                                            <div>
-                                                <div className="text-sm font-medium text-slate-200">{load.name}</div>
-                                                <div className="text-[10px] text-slate-500">{new Date(load.createdAt).toLocaleDateString()} • {load.cargoItems.length} items</div>
+                        {/* History Panel */}
+                        <AnimatePresence>
+                            {showHistory && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="glass-gradient p-4 rounded-2xl max-h-[260px] overflow-y-auto">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <History className="w-3 h-3" />
+                                            Saved Loads
+                                        </h3>
+                                        {loadHistory.length === 0 ? (
+                                            <div className="text-center text-xs text-slate-600 italic py-6">
+                                                No saved loads found.
                                             </div>
-                                            <Play className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition" />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <TruckConfigForm config={truck} onChange={setTruck} />
-                    <CargoInputForm onAdd={handleAddCargo} truckConfig={truck} />
-
-                    {/* Current Manifest */}
-                    <div className="glass-card p-6 rounded-2xl">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-slate-300">Cargo Manifest ({cargoItems.length})</h3>
-                            {cargoItems.length > 0 && (
-                                <button onClick={handleRemoveAll} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1">
-                                    <Trash2 className="w-3 h-3" /> Clear
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2">
-                            {cargoItems.length === 0 ? (
-                                <div className="text-center text-slate-600 text-sm py-8 italic">
-                                    No cargo added yet.
-                                </div>
-                            ) : (
-                                cargoItems.map((item, idx) => (
-                                    <div key={item.id} className="flex items-center justify-between text-xs bg-slate-900/40 p-2 rounded-lg border border-slate-700/50">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                            <span className="text-slate-300">{item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid'}</span>
-                                        </div>
-                                        <span className="font-mono text-slate-500">
-                                            {item.dimensions.length}x{item.dimensions.width}x{item.dimensions.height}
-                                        </span>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {loadHistory.map((load: any) => (
+                                                    <motion.div
+                                                        key={load._id}
+                                                        className="flex items-center justify-between p-3 bg-slate-900/40 rounded-xl hover:bg-slate-900/60 transition group cursor-pointer border border-transparent hover:border-emerald-500/20"
+                                                        onClick={() => restoreLoad(load)}
+                                                        whileHover={{ x: 2 }}
+                                                    >
+                                                        <div>
+                                                            <div className="text-sm font-medium text-slate-200">{load.name}</div>
+                                                            <div className="text-[10px] text-slate-500 mt-0.5">
+                                                                {new Date(load.createdAt).toLocaleDateString()} • {load.cargoItems.length} items
+                                                            </div>
+                                                        </div>
+                                                        <Play className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition" />
+                                                    </motion.div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                ))
+                                </motion.div>
                             )}
-                        </div>
-                    </div>
-                </div>
+                        </AnimatePresence>
 
-                {/* RIGHT COLUMN: Visualization */}
-                <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <StatCard label="Utilization" value={`${utilization}%`} highlight />
-                        <StatCard label="Packed Items" value={packed.length.toString()} />
-                        <StatCard label="Unpacked Items" value={unpacked.length.toString()} error={unpacked.length > 0} />
-                        <StatCard label="Available Vol" value={`${(totalVolume - packedVolume).toFixed(1)} m³`} />
-                    </div>
+                        <TruckConfigForm config={truck} onChange={setTruck} />
+                        <CargoInputForm onAdd={handleAddCargo} truckConfig={truck} />
 
-                    <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[600px] flex flex-col">
-                        <div className="absolute top-4 right-4 z-10 bg-slate-800/80 backdrop-blur rounded-lg p-1 border border-slate-700 shadow-xl flex gap-1">
-                            <button
-                                onClick={() => setViewMode('2d')}
-                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === '2d' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-700'}`}
-                            >
-                                2D Side View
-                            </button>
-                            <button
-                                onClick={() => setViewMode('3d')}
-                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === '3d' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-700'}`}
-                            >
-                                3D Interactive
-                            </button>
-                        </div>
-
-                        {viewMode === '3d' ? (
-                            <ThreeViewer truck={truck} packedItems={packed} />
-                        ) : (
-                            <TwoViewer truck={truck} packedItems={packed} />
-                        )}
-                    </div>
-
-                    {unpacked.length > 0 && (
-                        <div className="bg-red-900/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
-                            <div className="bg-red-500/20 p-2 rounded-lg">
-                                <ArrowRight className="text-red-500 w-5 h-5" />
+                        {/* Current Manifest */}
+                        <div className="glass-card p-5 rounded-2xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                                    <Package className="w-4 h-4 text-emerald-400" />
+                                    Cargo Manifest
+                                    <span className="text-xs bg-slate-700/50 px-2 py-0.5 rounded-full text-slate-400">
+                                        {cargoItems.length}
+                                    </span>
+                                </h3>
+                                {cargoItems.length > 0 && (
+                                    <motion.button
+                                        onClick={handleRemoveAll}
+                                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-500/10 transition"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        Clear All
+                                    </motion.button>
+                                )}
                             </div>
-                            <div>
-                                <h4 className="text-red-400 font-semibold text-sm">Items failed to pack</h4>
-                                <p className="text-red-400/80 text-xs mt-1">
-                                    {unpacked.length} items could not fit in the current truck configuration. Try rearranging priority or rotating items (auto-rotation coming soon).
-                                </p>
+
+                            <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1">
+                                {cargoItems.length === 0 ? (
+                                    <div className="text-center text-slate-600 text-sm py-8 italic flex flex-col items-center gap-2">
+                                        <Box className="w-8 h-8 text-slate-700" />
+                                        No cargo added yet
+                                    </div>
+                                ) : (
+                                    cargoItems.map((item, idx) => (
+                                        <motion.div
+                                            key={item.id}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            className="flex items-center justify-between text-xs bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/30"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="w-3 h-3 rounded-sm shadow-sm"
+                                                    style={{ backgroundColor: item.color }}
+                                                />
+                                                <span className="text-slate-300">
+                                                    {item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid'}
+                                                </span>
+                                            </div>
+                                            <span className="font-mono text-slate-500 text-[10px]">
+                                                {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}m
+                                            </span>
+                                        </motion.div>
+                                    ))
+                                )}
                             </div>
                         </div>
-                    )}
+                    </motion.div>
+
+                    {/* RIGHT COLUMN: Visualization */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="space-y-5"
+                    >
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <StatCard
+                                label="Utilization"
+                                value={utilization}
+                                suffix="%"
+                                icon={Gauge}
+                                variant="highlight"
+                            />
+                            <StatCard
+                                label="Packed Items"
+                                value={packed.length}
+                                icon={Package}
+                            />
+                            <StatCard
+                                label="Unpacked"
+                                value={unpacked.length}
+                                icon={PackageX}
+                                variant={unpacked.length > 0 ? 'error' : 'default'}
+                            />
+                            <StatCard
+                                label="Available"
+                                value={(totalVolume - packedVolume).toFixed(1)}
+                                suffix="m³"
+                                icon={Box}
+                            />
+                        </div>
+
+                        {/* Viewer Container */}
+                        <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col">
+                            {/* View Toggle */}
+                            <div className="floating-panel top-4 right-4 p-1 flex gap-1">
+                                <button
+                                    onClick={() => setViewMode('2d')}
+                                    className={`view-toggle-btn ${viewMode === '2d' ? 'active' : ''}`}
+                                >
+                                    2D Side
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('3d')}
+                                    className={`view-toggle-btn ${viewMode === '3d' ? 'active' : ''}`}
+                                >
+                                    3D View
+                                </button>
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={viewMode}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full"
+                                >
+                                    {viewMode === '3d' ? (
+                                        <ThreeViewer truck={truck} packedItems={packed} />
+                                    ) : (
+                                        <TwoViewer truck={truck} packedItems={packed} />
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Unpacked Warning */}
+                        <AnimatePresence>
+                            {unpacked.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 10 }}
+                                    className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-start gap-3"
+                                >
+                                    <div className="bg-red-500/10 p-2 rounded-lg">
+                                        <PackageX className="text-red-400 w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-red-400 font-semibold text-sm">Items failed to pack</h4>
+                                        <p className="text-red-400/70 text-xs mt-1">
+                                            {unpacked.length} items could not fit in the current truck configuration.
+                                            Try using smaller cargo or a larger truck.
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
                 </div>
             </div>
         </main>
-    );
-}
-
-function StatCard({ label, value, highlight, error }: { label: string, value: string, highlight?: boolean, error?: boolean }) {
-    return (
-        <div className={`glass-card p-4 rounded-xl border-l-[4px] ${error ? 'border-red-500' : highlight ? 'border-emerald-500' : 'border-slate-600'}`}>
-            <div className="text-slate-400 text-xs uppercase font-semibold">{label}</div>
-            <div className={`text-2xl font-bold mt-1 ${error ? 'text-red-400' : highlight ? 'text-emerald-400' : 'text-white'}`}>
-                {value}
-            </div>
-        </div>
     );
 }

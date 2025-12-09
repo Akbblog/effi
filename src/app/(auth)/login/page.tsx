@@ -1,11 +1,13 @@
-
 'use client';
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Cuboid, Loader2 } from 'lucide-react';
+import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import AnimatedBackground from '@/components/ui/AnimatedBackground';
+import Logo from '@/components/ui/Logo';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -39,60 +41,108 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-            <div className="w-full max-w-md bg-slate-800/50 border border-slate-700 p-8 rounded-2xl shadow-2xl glass-card">
+        <div className="min-h-screen flex items-center justify-center p-4 relative">
+            <AnimatedBackground variant="auth" />
 
-                <div className="flex flex-col items-center mb-8">
-                    <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4">
-                        <Cuboid className="text-white w-7 h-7" />
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="w-full max-w-md"
+            >
+                <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
+                    {/* Decorative top gradient line */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
+
+                    <div className="flex flex-col items-center mb-8">
+                        <Logo size="lg" showText={false} />
+                        <h1 className="text-2xl font-bold text-white mt-6">Welcome Back</h1>
+                        <p className="text-slate-400 text-sm mt-1">Sign in to your workspace</p>
                     </div>
-                    <h1 className="text-2xl font-bold text-white">Welcome Back</h1>
-                    <p className="text-slate-400 text-sm">Sign in to access your EFFI workspace</p>
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="input-label">Email Address</label>
+                            <div className="relative">
+
+                                <input
+                                    type="email"
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="input pl-11"
+                                    placeholder="you@company.com"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="input-label">Password</label>
+                            <div className="relative">
+
+                                <input
+                                    type="password"
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="input pl-11"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-xl border border-red-500/20"
+                            >
+                                <div className="w-2 h-2 rounded-full bg-red-400" />
+                                {error}
+                            </motion.div>
+                        )}
+
+                        <motion.button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary w-full py-3.5 text-base"
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Signing In...
+                                </>
+                            ) : (
+                                <>
+                                    Sign In
+                                    <ArrowRight className="w-4 h-4" />
+                                </>
+                            )}
+                        </motion.button>
+                    </form>
+
+                    <div className="mt-8 text-center">
+                        <p className="text-sm text-slate-400">
+                            Don&apos;t have an account?{' '}
+                            <Link
+                                href="/register"
+                                className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                            >
+                                Register Company
+                            </Link>
+                        </p>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Email</label>
-                        <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                            placeholder="you@company.com"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Password</label>
-                        <input
-                            type="password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                            placeholder="••••••••"
-                        />
-                    </div>
-
-                    {error && <div className="text-red-400 text-sm text-center bg-red-900/20 p-2 rounded-lg border border-red-900/30">{error}</div>}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {loading ? 'Signing In...' : 'Sign In'}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-sm text-slate-400">
-                    Don't have an account? {' '}
-                    <Link href="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">
-                        Register Company
-                    </Link>
+                {/* Footer branding */}
+                <div className="mt-6 text-center">
+                    <p className="text-xs text-slate-600">
+                        Powered by <span className="text-slate-500 font-medium">AKB</span> • Logistics Intelligence
+                    </p>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

@@ -1,17 +1,26 @@
-
 'use client';
 
 import { useState } from 'react';
 import { TruckConfig, CargoItem, CargoType } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { PackagePlus, Box, AlertTriangle } from 'lucide-react';
+import { PackagePlus, Box, AlertTriangle, Plus, Layers } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface CargoInputFormProps {
     onAdd: (items: CargoItem[]) => void;
     truckConfig: TruckConfig;
 }
 
-const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
+const COLORS = [
+    '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+    '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'
+];
+
+const QUICK_ADD_OPTIONS = [
+    { count: 1, label: 'Add 1', highlight: false },
+    { count: 5, label: 'Add 5', highlight: false },
+    { count: 10, label: 'Add 10', highlight: true },
+];
 
 export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormProps) {
     const [activeTab, setActiveTab] = useState<'standard' | 'custom'>('standard');
@@ -19,16 +28,21 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
     // Custom Skid State
     const [customDims, setCustomDims] = useState({ length: 2, width: 2, height: 2 });
     const [error, setError] = useState<string | null>(null);
+    const [addedFeedback, setAddedFeedback] = useState<number | null>(null);
 
     // Quick Add Standard
     const handleAddStandard = (count: number) => {
         const newItems: CargoItem[] = Array.from({ length: count }).map(() => ({
             id: uuidv4(),
             type: 'standard',
-            dimensions: { length: 1.2, width: 1.2, height: 1.2 }, // Assumed height 1.2m for standard pallet if not specified, usually pallets vary but footprint is 1.2x1.2
+            dimensions: { length: 1.2, width: 1.2, height: 1.2 },
             color: COLORS[Math.floor(Math.random() * COLORS.length)]
         }));
         onAdd(newItems);
+
+        // Show feedback
+        setAddedFeedback(count);
+        setTimeout(() => setAddedFeedback(null), 1500);
     };
 
     const validateAndAddCustom = () => {
@@ -55,101 +69,164 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
             color: COLORS[Math.floor(Math.random() * COLORS.length)]
         };
         onAdd([newItem]);
+
+        setAddedFeedback(1);
+        setTimeout(() => setAddedFeedback(null), 1500);
     };
 
     return (
-        <div className="glass-card p-6 rounded-2xl w-full flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 text-emerald-400">
-                    <PackagePlus className="w-5 h-5" />
-                    <h2 className="text-lg font-semibold tracking-wide">Add Cargo</h2>
+        <div className="glass-card p-5 rounded-2xl w-full relative overflow-hidden">
+            {/* Success feedback overlay */}
+            <AnimatePresence>
+                {addedFeedback && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute inset-0 bg-emerald-500/10 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl"
+                    >
+                        <div className="text-center">
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-2"
+                            >
+                                <Plus className="w-6 h-6 text-emerald-400" />
+                            </motion.div>
+                            <p className="text-emerald-400 font-medium">
+                                Added {addedFeedback} {addedFeedback === 1 ? 'item' : 'items'}
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center border border-emerald-500/20">
+                        <PackagePlus className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-base font-semibold text-white">Add Cargo</h2>
+                        <p className="text-xs text-slate-500">Add pallets or custom skids</p>
+                    </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex bg-slate-900/50 p-1 rounded-lg">
+                <div className="view-toggle">
                     <button
-                        onClick={() => setActiveTab('standard')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'standard' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                        onClick={() => { setActiveTab('standard'); setError(null); }}
+                        className={`view-toggle-btn ${activeTab === 'standard' ? 'active' : ''}`}
                     >
                         Standard
                     </button>
                     <button
-                        onClick={() => setActiveTab('custom')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'custom' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                        onClick={() => { setActiveTab('custom'); setError(null); }}
+                        className={`view-toggle-btn ${activeTab === 'custom' ? 'active' : ''}`}
                     >
-                        Custom Skid
+                        Custom
                     </button>
                 </div>
             </div>
 
-            {activeTab === 'standard' && (
-                <div className="grid grid-cols-2 gap-3">
-                    <button
-                        onClick={() => handleAddStandard(1)}
-                        className="btn-secondary"
+            <AnimatePresence mode="wait">
+                {activeTab === 'standard' && (
+                    <motion.div
+                        key="standard"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className="space-y-3"
                     >
-                        Add 1 Pallet
-                    </button>
-                    <button
-                        onClick={() => handleAddStandard(5)}
-                        className="btn-secondary"
-                    >
-                        Add 5 Pallets
-                    </button>
-                    <button
-                        onClick={() => handleAddStandard(10)}
-                        className="col-span-2 btn-primary"
-                    >
-                        Add 10 Pallets
-                    </button>
-                    <div className="col-span-2 text-center text-xs text-slate-500 mt-2">
-                        Standard Size: 1.2m x 1.2m x 1.2m
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'custom' && (
-                <div className="flex flex-col gap-4">
-                    <div className="grid grid-cols-3 gap-3">
-                        {(['length', 'width', 'height'] as const).map(dim => (
-                            <div key={dim} className="flex flex-col gap-1">
-                                <label className="text-[10px] text-slate-400 uppercase font-bold">{dim}</label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={customDims[dim]}
-                                    onChange={(e) => setCustomDims(prev => ({ ...prev, [dim]: parseFloat(e.target.value) || 0 }))}
-                                    className="bg-slate-900/50 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-200 focus:ring-1 focus:ring-emerald-500"
-                                />
-                            </div>
-                        ))}
-                    </div>
-
-                    {error && (
-                        <div className="flex items-center gap-2 text-red-400 text-xs bg-red-900/20 p-2 rounded border border-red-900/50">
-                            <AlertTriangle className="w-3 h-3" />
-                            {error}
+                        <div className="grid grid-cols-3 gap-2">
+                            {QUICK_ADD_OPTIONS.map((option) => (
+                                <motion.button
+                                    key={option.count}
+                                    onClick={() => handleAddStandard(option.count)}
+                                    className={option.highlight ? 'btn-primary py-3' : 'btn-secondary py-3'}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <Layers className="w-4 h-4" />
+                                    {option.label}
+                                </motion.button>
+                            ))}
                         </div>
-                    )}
 
-                    <button
-                        onClick={validateAndAddCustom}
-                        className="btn-primary"
+                        <div className="flex items-center justify-center gap-2 text-xs text-slate-500 pt-2">
+                            <Box className="w-3 h-3" />
+                            Standard Pallet: 1.2m × 1.2m × 1.2m
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'custom' && (
+                    <motion.div
+                        key="custom"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="space-y-4"
                     >
-                        Add Custom Skid
-                    </button>
-                </div>
-            )}
+                        <div className="grid grid-cols-3 gap-3">
+                            {(['length', 'width', 'height'] as const).map((dim) => (
+                                <div key={dim} className="flex flex-col gap-1.5">
+                                    <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                                        {dim}
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            min="0.1"
+                                            value={customDims[dim]}
+                                            onChange={(e) => setCustomDims(prev => ({
+                                                ...prev,
+                                                [dim]: parseFloat(e.target.value) || 0
+                                            }))}
+                                            className="input text-center font-mono py-2.5 text-sm pr-7"
+                                        />
+                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">
+                                            m
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
-            {/* Styles for buttons that share common look */}
-            <style jsx>{`
-        .btn-primary {
-            @apply w-full bg-emerald-500 hover:bg-emerald-400 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center;
-        }
-        .btn-secondary {
-            @apply w-full bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 font-medium py-3 rounded-xl border border-slate-600 transition-all active:scale-95;
-        }
-      `}</style>
+                        <AnimatePresence>
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 p-2.5 rounded-lg border border-red-500/20"
+                                >
+                                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                                    {error}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <motion.button
+                            onClick={validateAndAddCustom}
+                            className="btn-primary w-full py-3"
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Custom Skid
+                        </motion.button>
+
+                        {/* Volume preview */}
+                        <div className="text-center text-xs text-slate-500">
+                            Volume: <span className="text-slate-400 font-mono">
+                                {(customDims.length * customDims.width * customDims.height).toFixed(2)} m³
+                            </span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
