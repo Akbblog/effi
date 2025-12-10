@@ -376,20 +376,21 @@ export default function Dashboard() {
                         transition={{ delay: 0.1 }}
                         className="space-y-5"
                     >
-                        {/* Primary Action */}
+                        {/* Primary Action - Scan Button */}
                         <motion.button
                             onClick={() => setShowScanner(true)}
-                            className="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center gap-3 transition-all group"
+                            className="w-full btn-action py-5 group"
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                         >
-                            <div className="p-2 bg-emerald-500/20 rounded-lg group-hover:bg-emerald-500/30 transition-colors">
+                            <div className="p-2.5 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
                                 <QrCode className="w-6 h-6" />
                             </div>
-                            <div className="text-left">
-                                <span className="block font-semibold">Scan Cargo QR</span>
-                                <span className="text-xs text-emerald-400/70">Tap to start camera</span>
+                            <div className="text-left flex-1">
+                                <span className="block font-semibold text-base">Scan Cargo</span>
+                                <span className="text-xs text-white/70">QR codes & barcodes</span>
                             </div>
+                            <div className="w-2 h-2 rounded-full bg-white/50 animate-pulse" />
                         </motion.button>
 
                         {/* Actions Bar */}
@@ -397,52 +398,62 @@ export default function Dashboard() {
                             <motion.button
                                 onClick={handleDownloadManifest}
                                 disabled={cargoItems.length === 0}
-                                className="btn-secondary py-3 flex items-center justify-center gap-2"
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.99 }}
+                                className="btn-secondary py-3.5 flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                whileHover={{ scale: cargoItems.length > 0 ? 1.01 : 1 }}
+                                whileTap={{ scale: cargoItems.length > 0 ? 0.99 : 1 }}
                             >
-                                <Box className="w-4 h-4 text-emerald-400" />
-                                Manifest
+                                <Box className="w-4.5 h-4.5 text-emerald-400" />
+                                <span className="font-medium">Manifest</span>
                             </motion.button>
                             <motion.button
                                 onClick={saveLoad}
                                 disabled={saving || cargoItems.length === 0}
-                                className="btn-primary py-3"
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.99 }}
+                                className="btn-primary py-3.5 disabled:opacity-40"
+                                whileHover={{ scale: !saving && cargoItems.length > 0 ? 1.01 : 1 }}
+                                whileTap={{ scale: !saving && cargoItems.length > 0 ? 0.99 : 1 }}
                             >
-                                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                Save Load
+                                {saving ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <Save className="w-4.5 h-4.5" />}
+                                <span className="font-medium">Save Load</span>
                             </motion.button>
                         </div>
 
                         {/* Accordion: Truck Config */}
-                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/40">
+                        <div className="glass-card rounded-2xl overflow-hidden">
                             <button
                                 onClick={() => setOpenSection(openSection === 'truck' ? null : 'truck')}
-                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-slate-800/50 transition"
+                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-white/5 transition group"
                             >
-                                <span>Truck Configuration</span>
-                                <ChevronRight className={`w-4 h-4 transition-transform ${openSection === 'truck' ? 'rotate-90' : ''}`} />
+                                <div className="flex items-center gap-3">
+                                    <div className="icon-container w-8 h-8">
+                                        <Gauge className="w-4 h-4 text-emerald-400" />
+                                    </div>
+                                    <span>Truck Configuration</span>
+                                </div>
+                                <ChevronRight className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-all ${openSection === 'truck' ? 'rotate-90' : ''}`} />
                             </button>
                             {openSection === 'truck' && (
-                                <div className="p-4 border-t border-slate-800">
+                                <div className="p-4 border-t border-slate-800/50">
                                     <TruckConfigForm config={truck} onChange={setTruck} />
                                 </div>
                             )}
                         </div>
 
                         {/* Accordion: Add Cargo */}
-                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/40">
+                        <div className="glass-card rounded-2xl overflow-hidden">
                             <button
                                 onClick={() => setOpenSection(openSection === 'cargo' ? null : 'cargo')}
-                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-slate-800/50 transition"
+                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-white/5 transition group"
                             >
-                                <span>Add Cargo (Manual)</span>
-                                <ChevronRight className={`w-4 h-4 transition-transform ${openSection === 'cargo' ? 'rotate-90' : ''}`} />
+                                <div className="flex items-center gap-3">
+                                    <div className="icon-container w-8 h-8">
+                                        <Plus className="w-4 h-4 text-emerald-400" />
+                                    </div>
+                                    <span>Add Cargo (Manual)</span>
+                                </div>
+                                <ChevronRight className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-all ${openSection === 'cargo' ? 'rotate-90' : ''}`} />
                             </button>
                             {openSection === 'cargo' && (
-                                <div className="p-4 border-t border-slate-800">
+                                <div className="p-4 border-t border-slate-800/50">
                                     <CargoInputForm onAdd={handleAddCargo} truckConfig={truck} />
                                 </div>
                             )}
