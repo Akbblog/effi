@@ -34,6 +34,9 @@ export default function Dashboard() {
     const [showScanner, setShowScanner] = useState(false);
     const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
+    // Track scanned barcodes to prevent duplicates
+    const [scannedBarcodes, setScannedBarcodes] = useState<Set<string>>(new Set());
+
 
     // Auth Check
     useEffect(() => {
