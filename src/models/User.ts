@@ -33,7 +33,11 @@ const UserSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected'],
-        default: 'pending' // Default to pending for approval
+        default: 'pending'
+    },
+    lastLogin: {
+        type: Date,
+        default: null
     },
     createdAt: {
         type: Date,

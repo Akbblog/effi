@@ -50,6 +50,9 @@ export const authOptions: NextAuthOptions = {
                     throw new Error('Account pending approval. Please contact administrator.');
                 }
 
+                // Update last login time
+                await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+
                 return {
                     id: user._id.toString(),
                     name: user.name,

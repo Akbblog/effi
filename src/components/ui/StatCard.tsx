@@ -21,10 +21,10 @@ export default function StatCard({
     className,
 }: StatCardProps) {
     const variantColors = {
-        default: 'text-white',
-        highlight: 'text-emerald-400',
-        error: 'text-red-400',
-        warning: 'text-amber-400',
+        default: 'text-gray-800',
+        highlight: 'text-red-600',
+        error: 'text-red-500',
+        warning: 'text-amber-600',
     };
 
     return (
@@ -42,7 +42,7 @@ export default function StatCard({
                     <div className={cn('stat-card-value', variantColors[variant])}>
                         {value}
                         {suffix && (
-                            <span className="text-base font-medium text-slate-400 ml-1">
+                            <span className="text-base font-medium text-gray-400 ml-1">
                                 {suffix}
                             </span>
                         )}
@@ -52,10 +52,10 @@ export default function StatCard({
                 {Icon && (
                     <div className={cn(
                         'p-2 rounded-lg',
-                        variant === 'highlight' && 'bg-emerald-500/10 text-emerald-400',
-                        variant === 'error' && 'bg-red-500/10 text-red-400',
-                        variant === 'warning' && 'bg-amber-500/10 text-amber-400',
-                        variant === 'default' && 'bg-slate-700/50 text-slate-400',
+                        variant === 'highlight' && 'bg-red-50 text-red-500',
+                        variant === 'error' && 'bg-red-50 text-red-500',
+                        variant === 'warning' && 'bg-amber-50 text-amber-500',
+                        variant === 'default' && 'bg-gray-100 text-gray-500',
                     )}>
                         <Icon className="w-5 h-5" />
                     </div>

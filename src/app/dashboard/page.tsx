@@ -150,7 +150,7 @@ export default function Dashboard() {
 
         // Header
         doc.setFontSize(18);
-        doc.setTextColor(16, 185, 129); // Emerald-500
+        doc.setTextColor(212, 5, 17); // DHL Red
         doc.text("EFFI LOAD MANIFEST", 14, 20);
 
         doc.setFontSize(10);
@@ -176,8 +176,8 @@ export default function Dashboard() {
             startY: 55,
             head: [['Stop', 'Item Name', 'Dims (m)', 'Pos (x,y,z)', 'ID']],
             body: tableBody,
-            headStyles: { fillColor: [6, 78, 59], textColor: 255 }, // Dark Green
-            alternateRowStyles: { fillColor: [240, 253, 244] }, // Light Green
+            headStyles: { fillColor: [212, 5, 17], textColor: 255 }, // DHL Red
+            alternateRowStyles: { fillColor: [255, 250, 240] }, // Light Warm/Amber
             styles: { fontSize: 9 },
         });
 
@@ -300,7 +300,7 @@ export default function Dashboard() {
     };
 
     return (
-        <main className="min-h-screen text-slate-100 relative">
+        <main className="min-h-screen text-gray-800 relative">
             <AnimatedBackground variant="minimal" />
 
             {/* Global QR Scanner Overlay */}
@@ -318,15 +318,20 @@ export default function Dashboard() {
                 <motion.header
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-6 flex items-center justify-between"
+                    className="mb-6 flex items-center justify-between bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl px-4 py-3 shadow-sm"
                 >
                     <Logo size="md" />
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         {session?.user && (
-                            <div className="hidden md:flex flex-col items-end">
-                                <span className="text-slate-200 font-medium text-sm">{session.user.name}</span>
-                                <span className="text-xs text-slate-500">{session.user.email}</span>
+                            <div className="hidden md:flex items-center gap-3 pr-3 border-r border-gray-200">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                                    {session.user.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-gray-800 font-medium text-sm">{session.user.name}</span>
+                                    <span className="text-xs text-gray-500">{session.user.email}</span>
+                                </div>
                             </div>
                         )}
 
@@ -334,7 +339,7 @@ export default function Dashboard() {
                         {session?.user?.role === 'admin' && (
                             <motion.button
                                 onClick={() => router.push('/admin')}
-                                className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+                                className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs font-medium hover:bg-red-100 transition-colors"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
@@ -345,7 +350,7 @@ export default function Dashboard() {
 
                         <motion.button
                             onClick={() => signOut({ callbackUrl: '/' })}
-                            className="btn-ghost text-slate-400"
+                            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg text-gray-600 text-sm font-medium transition-colors"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                         >
@@ -390,7 +395,7 @@ export default function Dashboard() {
                                 whileHover={{ scale: cargoItems.length > 0 ? 1.01 : 1 }}
                                 whileTap={{ scale: cargoItems.length > 0 ? 0.99 : 1 }}
                             >
-                                <Box className="w-4.5 h-4.5 text-emerald-400" />
+                                <Box className="w-4.5 h-4.5 text-red-500" />
                                 <span className="font-medium">Manifest</span>
                             </motion.button>
                             <motion.button
@@ -409,18 +414,18 @@ export default function Dashboard() {
                         <div className="glass-card rounded-2xl overflow-hidden">
                             <button
                                 onClick={() => setOpenSection(openSection === 'truck' ? null : 'truck')}
-                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-white/5 transition group"
+                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="icon-container w-8 h-8">
-                                        <Gauge className="w-4 h-4 text-emerald-400" />
+                                        <Gauge className="w-4 h-4 text-red-500" />
                                     </div>
                                     <span>Truck Configuration</span>
                                 </div>
-                                <ChevronRight className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-all ${openSection === 'truck' ? 'rotate-90' : ''}`} />
+                                <ChevronRight className={`w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-all ${openSection === 'truck' ? 'rotate-90' : ''}`} />
                             </button>
                             {openSection === 'truck' && (
-                                <div className="p-4 border-t border-slate-800/50">
+                                <div className="p-4 border-t border-gray-100">
                                     <TruckConfigForm config={truck} onChange={setTruck} />
                                 </div>
                             )}
@@ -430,18 +435,18 @@ export default function Dashboard() {
                         <div className="glass-card rounded-2xl overflow-hidden">
                             <button
                                 onClick={() => setOpenSection(openSection === 'cargo' ? null : 'cargo')}
-                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-white/5 transition group"
+                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition group"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="icon-container w-8 h-8">
-                                        <Plus className="w-4 h-4 text-emerald-400" />
+                                        <Plus className="w-4 h-4 text-red-500" />
                                     </div>
                                     <span>Add Cargo (Manual)</span>
                                 </div>
-                                <ChevronRight className={`w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-all ${openSection === 'cargo' ? 'rotate-90' : ''}`} />
+                                <ChevronRight className={`w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-all ${openSection === 'cargo' ? 'rotate-90' : ''}`} />
                             </button>
                             {openSection === 'cargo' && (
-                                <div className="p-4 border-t border-slate-800/50">
+                                <div className="p-4 border-t border-gray-100">
                                     <CargoInputForm onAdd={handleAddCargo} truckConfig={truck} />
                                 </div>
                             )}
@@ -451,10 +456,10 @@ export default function Dashboard() {
                         {/* Current Manifest */}
                         <div className="glass-card p-5 rounded-2xl">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                                    <Package className="w-4 h-4 text-emerald-400" />
+                                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <Package className="w-4 h-4 text-red-500" />
                                     Cargo Manifest
-                                    <span className="text-xs bg-slate-700/50 px-2 py-0.5 rounded-full text-slate-400">
+                                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">
                                         {cargoItems.length}
                                     </span>
                                 </h3>
@@ -473,8 +478,8 @@ export default function Dashboard() {
 
                             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {cargoItems.length === 0 ? (
-                                    <div className="text-center text-slate-600 text-sm py-8 italic flex flex-col items-center gap-2">
-                                        <Box className="w-8 h-8 text-slate-700" />
+                                    <div className="text-center text-gray-400 text-sm py-8 italic flex flex-col items-center gap-2">
+                                        <Box className="w-8 h-8 text-gray-300" />
                                         No cargo added yet
                                     </div>
                                 ) : (
@@ -483,17 +488,17 @@ export default function Dashboard() {
                                             key={item.id}
                                             initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            className="flex items-center justify-between text-xs bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/30 group"
+                                            className="flex items-center justify-between text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100 group"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="w-6 h-6 rounded flex items-center justify-center bg-slate-800 text-slate-400 font-mono text-[10px] border border-slate-700">
+                                                <div className="w-6 h-6 rounded flex items-center justify-center bg-white text-gray-600 font-mono text-[10px] border border-gray-200">
                                                     #{item.deliveryStop || 1}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-slate-300 font-medium">
+                                                    <span className="text-gray-700 font-medium">
                                                         {item.name || (item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid')}
                                                     </span>
-                                                    <span className="text-slate-500 text-[10px]">
+                                                    <span className="text-gray-400 text-[10px]">
                                                         {item.dimensions.length}x{item.dimensions.width}x{item.dimensions.height}m
                                                     </span>
                                                 </div>
@@ -559,7 +564,7 @@ export default function Dashboard() {
                                 {Object.keys(manualOverrides).length > 0 && (
                                     <button
                                         onClick={handleResetEdits}
-                                        className="view-toggle-btn text-amber-400 hover:text-amber-300"
+                                        className="view-toggle-btn text-red-500 hover:text-red-600"
                                         title="Reset Manual Edits"
                                     >
                                         Reset

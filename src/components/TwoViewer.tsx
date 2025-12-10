@@ -17,12 +17,12 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
                         Side Profile View
                     </span>
                 </div>
-                <div className="text-xs text-slate-500 font-mono">
+                <div className="text-xs text-gray-400 font-mono">
                     {truck.length}m × {truck.height}m
                 </div>
             </div>
@@ -30,7 +30,7 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
             {/* Viewer Container */}
             <div className="flex-1 flex items-center justify-center relative">
                 <div
-                    className="relative border-2 border-slate-600/50 bg-slate-800/30 rounded-lg"
+                    className="relative border border-gray-200 bg-gray-50 rounded-lg"
                     style={{
                         aspectRatio: `${truck.length} / ${truck.height}`,
                         width: '90%',
@@ -39,11 +39,11 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                 >
                     {/* Grid overlay */}
                     <div
-                        className="absolute inset-0 opacity-20 pointer-events-none"
+                        className="absolute inset-0 opacity-30 pointer-events-none"
                         style={{
                             backgroundImage: `
-                                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+                                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)
                             `,
                             backgroundSize: `${100 / truck.length}% ${100 / truck.height}%`,
                         }}
@@ -52,16 +52,16 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                     {/* Dimension labels */}
                     <div className="absolute -top-8 left-0 right-0 flex items-center justify-center">
                         <div className="flex items-center gap-2">
-                            <div className="h-px w-8 bg-gradient-to-r from-transparent to-slate-500" />
-                            <span className="text-xs font-mono text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded">
+                            <div className="h-px w-8 bg-gradient-to-r from-transparent to-gray-300" />
+                            <span className="text-xs font-mono text-gray-500 bg-white/90 border border-gray-200 px-2 py-0.5 rounded">
                                 Length: {truck.length}m
                             </span>
-                            <div className="h-px w-8 bg-gradient-to-l from-transparent to-slate-500" />
+                            <div className="h-px w-8 bg-gradient-to-l from-transparent to-gray-300" />
                         </div>
                     </div>
 
                     <div className="absolute -left-8 top-0 bottom-0 flex items-center">
-                        <span className="-rotate-90 text-xs font-mono text-slate-400 whitespace-nowrap bg-slate-900/80 px-2 py-0.5 rounded">
+                        <span className="-rotate-90 text-xs font-mono text-gray-500 whitespace-nowrap bg-white/90 border border-gray-200 px-2 py-0.5 rounded">
                             Height: {truck.height}m
                         </span>
                     </div>
@@ -104,7 +104,7 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                     })}
 
                     {/* Truck floor indicator */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500/30 via-emerald-500/60 to-emerald-500/30 rounded-b" />
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500/30 via-amber-500/60 to-amber-500/30 rounded-b" />
                 </div>
             </div>
 
@@ -122,7 +122,7 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                         />
                         <div>
                             <div className="text-sm font-medium text-white">
-                                {hoveredItem.type === 'standard' ? 'Standard Pallet' : 'Custom Skid'}
+                                {hoveredItem.name || (hoveredItem.type === 'standard' ? 'Standard Pallet' : 'Custom Skid')}
                             </div>
                             <div className="text-xs text-slate-400 font-mono">
                                 {hoveredItem.dimensions.length}m × {hoveredItem.dimensions.width}m × {hoveredItem.dimensions.height}m

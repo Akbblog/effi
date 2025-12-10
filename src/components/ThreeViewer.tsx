@@ -1,10 +1,10 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Edges, Environment, ContactShadows, TransformControls, Text } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Edges, ContactShadows, TransformControls } from '@react-three/drei';
 import { TruckConfig, PackedItem } from '@/lib/types';
-import { useMemo, Suspense, useState, useRef } from 'react';
-import { Loader2, Maximize2, RotateCcw, Move } from 'lucide-react';
+import { useMemo, Suspense, useState } from 'react';
+import { Loader2, RotateCcw, Move } from 'lucide-react';
 import * as THREE from 'three';
 
 interface ThreeViewerProps {
@@ -15,10 +15,10 @@ interface ThreeViewerProps {
 
 function LoadingFallback() {
     return (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-                <p className="text-xs text-slate-400">Loading 3D View...</p>
+                <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+                <p className="text-xs text-gray-500">Loading 3D View...</p>
             </div>
         </div>
     );
@@ -68,17 +68,17 @@ export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeVie
                         <mesh position={[truck.width / 2, truck.height / 2, truck.length / 2]}>
                             <boxGeometry args={[truck.width, truck.height, truck.length]} />
                             <meshBasicMaterial
-                                color="#10b981"
+                                color="#9ca3af"
                                 wireframe
                                 transparent
-                                opacity={0.3}
+                                opacity={0.15}
                             />
-                            <Edges color="#10b981" threshold={15} />
+                            <Edges color="#d1d5db" threshold={15} />
                         </mesh>
 
-                        {/* Grid helper on the floor */}
+                        {/* Very light gray reference grid */}
                         <gridHelper
-                            args={[Math.max(truck.width, truck.length) * 2, 20, '#334155', '#1e293b']}
+                            args={[Math.max(truck.width, truck.length) * 1.5, 30, '#e5e7eb', '#f3f4f6']}
                             position={[truck.width / 2, 0.001, truck.length / 2]}
                         />
 
@@ -111,7 +111,7 @@ export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeVie
 
             {/* Controls overlay */}
             <div className="absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg">
+                <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/90 backdrop-blur border border-gray-200 px-3 py-1.5 rounded-lg">
                     <RotateCcw className="w-3 h-3" />
                     Drag to rotate • Scroll to zoom
                 </div>
@@ -120,7 +120,7 @@ export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeVie
             {/* Editor mode hint */}
             {onItemMove && (
                 <div className="absolute top-4 left-4 pointer-events-none">
-                    <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 backdrop-blur px-3 py-1.5 rounded-lg">
+                    <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-200 backdrop-blur px-3 py-1.5 rounded-lg">
                         <Move className="w-3 h-3" />
                         Editor Mode Active
                     </div>
@@ -128,7 +128,7 @@ export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeVie
             )}
 
             {/* View label */}
-            <div className="absolute bottom-4 right-4 text-xs text-slate-600 font-mono bg-slate-900/60 backdrop-blur px-2 py-1 rounded pointer-events-none">
+            <div className="absolute bottom-4 right-4 text-xs text-gray-500 font-mono bg-white/80 backdrop-blur border border-gray-200 px-2 py-1 rounded pointer-events-none">
                 3D Interactive View
             </div>
         </div>
@@ -201,20 +201,6 @@ function ItemMesh({ item, truck, isSelected, onSelect, onItemMove }: ItemMeshPro
                     emissiveIntensity={isSelected ? 0.2 : 0}
                 />
                 <Edges color={isSelected ? "white" : "rgba(0,0,0,0.5)"} threshold={15} />
-                {item.name && (
-                    <Text
-                        position={[0, 0, item.dimensions.length / 2 + 0.01]} // Position on the front face (Z-axis)
-                        rotation={[0, 0, 0]}
-                        fontSize={Math.min(item.dimensions.width, item.dimensions.height) * 0.2} // Scale font based on size
-                        color="white"
-                        anchorX="center"
-                        anchorY="middle"
-                        outlineWidth={0.02}
-                        outlineColor="#000000"
-                    >
-                        {item.name.substring(0, 15)}
-                    </Text>
-                )}
             </mesh>
         </group>
     );

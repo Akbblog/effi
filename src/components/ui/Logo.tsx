@@ -1,6 +1,7 @@
 'use client';
 
 import { Cuboid } from 'lucide-react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 
 interface LogoProps {
@@ -10,39 +11,43 @@ interface LogoProps {
 }
 
 const sizes = {
-    sm: { container: 'w-8 h-8', icon: 'w-4 h-4', text: 'text-lg' },
-    md: { container: 'w-10 h-10', icon: 'w-5 h-5', text: 'text-xl' },
-    lg: { container: 'w-14 h-14', icon: 'w-7 h-7', text: 'text-2xl' },
+    sm: { icon: 16, text: 'text-lg', container: 32 },
+    md: { icon: 20, text: 'text-xl', container: 40 },
+    lg: { icon: 28, text: 'text-2xl', container: 56 },
 };
 
 export default function Logo({ size = 'md', showText = true, animated = true }: LogoProps) {
     const sizeConfig = sizes[size];
 
-    const IconWrapper = animated ? motion.div : 'div';
+    const Wrapper = animated ? motion.div : 'div';
     const animationProps = animated ? {
-        whileHover: { scale: 1.05, rotate: 5 },
+        whileHover: { scale: 1.02 },
         transition: { type: 'spring' as const, stiffness: 400, damping: 10 }
     } : {};
 
     return (
-        <div className="flex items-center gap-3">
-            <IconWrapper
-                className={`${sizeConfig.container} logo-container bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg`}
-                {...animationProps}
+        <Wrapper
+            className="flex items-center gap-3"
+            {...animationProps}
+        >
+            {/* Icon container with DHL red gradient */}
+            <div
+                className="relative flex items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg"
+                style={{ width: sizeConfig.container, height: sizeConfig.container }}
             >
-                <Cuboid className={`${sizeConfig.icon} text-white`} />
-            </IconWrapper>
+                <Cuboid className="text-white" style={{ width: sizeConfig.icon, height: sizeConfig.icon }} />
+            </div>
 
             {showText && (
-                <div>
-                    <h1 className={`${sizeConfig.text} font-bold tracking-tight text-white`}>
+                <div className="flex flex-col">
+                    <span className={`font-bold ${sizeConfig.text} text-gray-800 tracking-tight leading-none`}>
                         EFFI
-                        <span className="text-emerald-400 text-[0.6em] font-medium uppercase tracking-wider ml-2">
-                            Load Optimizer
-                        </span>
-                    </h1>
+                    </span>
+                    <span className="text-xs text-red-500 font-medium">
+                        Load Optimizer
+                    </span>
                 </div>
             )}
-        </div>
+        </Wrapper>
     );
 }
