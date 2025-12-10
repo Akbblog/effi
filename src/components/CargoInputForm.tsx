@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, forwardRef, useImperativeHandle } from 'react';
 import { TruckConfig, CargoItem, CargoType } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { PackagePlus, Box, AlertTriangle, Plus, Layers, QrCode } from 'lucide-react';
@@ -8,6 +8,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 const QRScanner = dynamic(() => import('./QRScanner'), { ssr: false });
 import { useEffect } from 'react';
+
+export interface CargoInputFormHandle {
+    openScanner: () => void;
+}
 
 interface CargoInputFormProps {
     onAdd: (items: CargoItem[]) => void;
@@ -25,7 +29,7 @@ const QUICK_ADD_OPTIONS = [
     { count: 10, label: 'Add 10', highlight: true },
 ];
 
-export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormProps) {
+const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ onAdd, truckConfig }, ref) => {
     const [activeTab, setActiveTab] = useState<'standard' | 'custom'>('standard');
 
     // Custom Skid State
@@ -33,6 +37,14 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
     const [stdHeight, setStdHeight] = useState(1.2); // New state for variable height
     const [error, setError] = useState<string | null>(null);
     const [addedFeedback, setAddedFeedback] = useState<number | null>(null);
+    const [showScanner, setShowScanner] = useState(false);
+    const [standardBase, setStandardBase] = useState(false);
+
+    useImperativeHandle(ref, () => ({
+        openScanner: () => {
+            setShowScanner(true);
+        }
+    }));
 
     // Quick Add Standard
     const handleAddStandard = (count: number) => {
@@ -51,7 +63,8 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
             id: uuidv4(),
             type: 'standard',
             dimensions: { length: 1.2, width: 1.2, height: stdHeight },
-            color: COLORS[Math.floor(Math.random() * COLORS.length)]
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            name: 'Standard Pallet'
         }));
         onAdd(newItems);
 
@@ -81,16 +94,14 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
             id: uuidv4(),
             type: 'custom',
             dimensions: { ...customDims },
-            color: COLORS[Math.floor(Math.random() * COLORS.length)]
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            name: standardBase ? 'Measured Skid' : 'Custom Skid'
         };
         onAdd([newItem]);
 
         setAddedFeedback(1);
         setTimeout(() => setAddedFeedback(null), 1500);
     };
-
-    const [showScanner, setShowScanner] = useState(false);
-    const [standardBase, setStandardBase] = useState(false);
 
     // QR Scan Handler
     const handleScan = async (data: string) => {
@@ -116,6 +127,7 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
                     type: 'custom',
                     dimensions: json.data.dimensions,
                     color: json.source === 'carrier_api' ? '#3b82f6' : COLORS[Math.floor(Math.random() * COLORS.length)], // Blue for external freight
+                    name: json.data.description || json.data.reference || `Consignment ${data}`
                 };
 
                 onAdd([newItem]);
@@ -174,7 +186,7 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
                 </AnimatePresence>
 
                 {/* Header with Title and Controls */}
-                <div className="flex items-center justify-between mb-5 shrink-0">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-5 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center border border-emerald-500/20">
                             <PackagePlus className="w-4 h-4 text-emerald-400" />
@@ -186,15 +198,6 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setShowScanner(true)}
-                            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-emerald-400 transition-colors flex items-center gap-2 border border-slate-700 hover:border-emerald-500/30"
-                            title="Scan QR Code"
-                        >
-                            <QrCode className="w-4 h-4" />
-                            <span className="text-xs font-medium">Scan</span>
-                        </button>
-
                         {/* Tabs */}
                         <div className="view-toggle">
                             <button
@@ -409,4 +412,8 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
             </div>
         </>
     );
-}
+});
+
+CargoInputForm.displayName = "CargoInputForm";
+
+export default CargoInputForm;

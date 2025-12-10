@@ -14,6 +14,7 @@ export interface CargoItem {
     type: CargoType;
     dimensions: Dimensions;
     color: string;
+    name?: string;
 }
 
 export interface PackedItem extends CargoItem {

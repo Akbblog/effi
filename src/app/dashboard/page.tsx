@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { TruckConfig, CargoItem, PackedItem } from '@/lib/types';
 import { packCargo } from '@/lib/algorithms/binPacking';
 import TruckConfigForm from '@/components/TruckConfigForm';
-import CargoInputForm from '@/components/CargoInputForm';
+import CargoInputForm, { CargoInputFormHandle } from '@/components/CargoInputForm';
 import ThreeViewer from '@/components/ThreeViewer';
 import TwoViewer from '@/components/TwoViewer';
 import AnimatedBackground from '@/components/ui/AnimatedBackground';
@@ -12,7 +12,7 @@ import Logo from '@/components/ui/Logo';
 import StatCard from '@/components/ui/StatCard';
 import {
     Trash2, Save, History, Loader2, Play, LogOut,
-    Gauge, Package, PackageX, Box, Shield, ChevronRight, X
+    Gauge, Package, PackageX, Box, Shield, ChevronRight, X, QrCode
 } from 'lucide-react';
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Dashboard() {
     const { data: session, status } = useSession();
     const router = useRouter();
+    const cargoFormRef = useRef<CargoInputFormHandle>(null);
 
     // Auth Check
     useEffect(() => {
@@ -218,6 +219,21 @@ export default function Dashboard() {
                         transition={{ delay: 0.1 }}
                         className="space-y-5"
                     >
+                        {/* Primary Action */}
+                        <motion.button
+                            onClick={() => cargoFormRef.current?.openScanner()}
+                            className="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center gap-3 transition-all group"
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                        >
+                            <div className="p-2 bg-emerald-500/20 rounded-lg group-hover:bg-emerald-500/30 transition-colors">
+                                <QrCode className="w-6 h-6" />
+                            </div>
+                            <div className="text-left">
+                                <span className="block font-semibold">Scan Cargo QR</span>
+                                <span className="text-xs text-emerald-400/70">Tap to start camera</span>
+                            </div>
+                        </motion.button>
 
                         {/* Actions Bar */}
                         <div className="grid grid-cols-2 gap-3">
@@ -286,7 +302,7 @@ export default function Dashboard() {
                         </AnimatePresence>
 
                         <TruckConfigForm config={truck} onChange={setTruck} />
-                        <CargoInputForm onAdd={handleAddCargo} truckConfig={truck} />
+                        <CargoInputForm ref={cargoFormRef} onAdd={handleAddCargo} truckConfig={truck} />
 
                         {/* Current Manifest */}
                         <div className="glass-card p-5 rounded-2xl">
@@ -331,7 +347,7 @@ export default function Dashboard() {
                                                     style={{ backgroundColor: item.color }}
                                                 />
                                                 <span className="text-slate-300">
-                                                    {item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid'}
+                                                    {item.name || (item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid')}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-3">
