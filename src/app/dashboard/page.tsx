@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { TruckConfig, CargoItem, PackedItem } from '@/lib/types';
 import { packCargo } from '@/lib/algorithms/binPacking';
 import TruckConfigForm from '@/components/TruckConfigForm';
-import CargoInputForm, { CargoInputFormHandle } from '@/components/CargoInputForm';
+import CargoInputForm from '@/components/CargoInputForm';
 import ThreeViewer from '@/components/ThreeViewer';
 import TwoViewer from '@/components/TwoViewer';
 import AnimatedBackground from '@/components/ui/AnimatedBackground';
@@ -12,16 +12,25 @@ import Logo from '@/components/ui/Logo';
 import StatCard from '@/components/ui/StatCard';
 import {
     Trash2, Save, History, Loader2, Play, LogOut,
-    Gauge, Package, PackageX, Box, Shield, ChevronRight, X, QrCode
+    Gauge, Package, PackageX, Box, Shield, ChevronRight, X, QrCode, Plus
 } from 'lucide-react';
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { v4 as uuidv4 } from 'uuid';
+import dynamic from 'next/dynamic';
+
+const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false });
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
     const router = useRouter();
-    const cargoFormRef = useRef<CargoInputFormHandle>(null);
+    // Ref not needed for scanner anymore if we lift state, but keeping if needed for other things or removing if unused.
+    // const cargoFormRef = useRef<CargoInputFormHandle>(null); 
+
+    const [showScanner, setShowScanner] = useState(false);
+    const [scanFeedback, setScanFeedback] = useState<number | null>(null); // To show "Added 1 item" globally if desired
+
 
     // Auth Check
     useEffect(() => {
@@ -145,6 +154,51 @@ export default function Dashboard() {
         }
     }, [status]);
 
+    // QR Scan Handler (Lifted from CargoInputForm)
+    const handleScan = async (data: string) => {
+        setShowScanner(false);
+
+        const loadingToast = document.createElement('div');
+        loadingToast.className = "fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium animate-in fade-in slide-in-from-top-4 border border-slate-700 flex items-center gap-2";
+        loadingToast.innerHTML = `<span class="animate-spin">⏳</span> Processing Scan: ${data}...`;
+        document.body.appendChild(loadingToast);
+
+        try {
+            const res = await fetch(`/api/integrations/lookup?code=${encodeURIComponent(data)}`);
+            const json = await res.json();
+
+            if (document.body.contains(loadingToast)) document.body.removeChild(loadingToast);
+
+            const COLORS = [
+                '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+                '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'
+            ];
+
+            if (json.success && json.data) {
+                const newItem: CargoItem = {
+                    id: uuidv4(),
+                    type: 'custom',
+                    dimensions: json.data.dimensions,
+                    color: json.source === 'carrier_api' ? '#3b82f6' : COLORS[Math.floor(Math.random() * COLORS.length)],
+                    name: json.data.description || json.data.reference || `Consignment ${data}`,
+                    deliveryStop: 1 // Default to 1 if scanned, or could prompt.
+                };
+
+                handleAddCargo([newItem]);
+                // Optional global feedback
+                setScanFeedback(1);
+                setTimeout(() => setScanFeedback(null), 1500);
+            } else {
+                alert(`Scan Error: ${json.error || 'Unknown Data Format'}`);
+            }
+        } catch (err) {
+            if (document.body.contains(loadingToast)) document.body.removeChild(loadingToast);
+            console.error(err);
+            alert("System Error: Failed to lookup consignment.");
+        }
+    };
+
+
     const handleDownloadManifest = () => {
         if (packed.length === 0) {
             alert("No items packed to generate manifest.");
@@ -186,6 +240,31 @@ export default function Dashboard() {
     return (
         <main className="min-h-screen text-slate-100 relative">
             <AnimatedBackground variant="minimal" />
+
+            {/* Global QR Scanner Overlay */}
+            {showScanner && (
+                <QRScanner
+                    onScan={handleScan}
+                    onClose={() => setShowScanner(false)}
+                />
+            )}
+
+            {/* Scan Feedback Overlay */}
+            <AnimatePresence>
+                {scanFeedback && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                        className="fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-500/90 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 backdrop-blur-md"
+                    >
+                        <div className="bg-white/20 rounded-full p-1">
+                            <Plus className="w-4 h-4" />
+                        </div>
+                        <span className="font-semibold">Item Added via Scan</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="relative z-10 p-4 md:p-6 lg:p-8">
                 {/* Header */}
@@ -240,7 +319,7 @@ export default function Dashboard() {
                     >
                         {/* Primary Action */}
                         <motion.button
-                            onClick={() => cargoFormRef.current?.openScanner()}
+                            onClick={() => setShowScanner(true)}
                             className="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center gap-3 transition-all group"
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
@@ -305,7 +384,7 @@ export default function Dashboard() {
                             </button>
                             {openSection === 'cargo' && (
                                 <div className="p-4 border-t border-slate-800">
-                                    <CargoInputForm ref={cargoFormRef} onAdd={handleAddCargo} truckConfig={truck} />
+                                    <CargoInputForm onAdd={handleAddCargo} truckConfig={truck} />
                                 </div>
                             )}
                         </div>
