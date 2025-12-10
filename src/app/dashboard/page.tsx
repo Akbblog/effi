@@ -560,7 +560,7 @@ export default function Dashboard() {
                         {/* Viewer Container */}
                         <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col">
                             {/* View Toggle */}
-                            <div className="floating-panel top-4 right-4 p-1 flex gap-1">
+                            <div className="floating-panel !relative md:!absolute mx-auto mb-3 md:mb-0 md:mx-0 top-auto right-auto md:top-4 md:right-4 p-1 flex gap-1 transform md:transform-none">
                                 {Object.keys(manualOverrides).length > 0 && (
                                     <button
                                         onClick={handleResetEdits}

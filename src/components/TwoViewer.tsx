@@ -133,7 +133,7 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
             )}
 
             {/* Legend */}
-            <div className="absolute top-4 right-4">
+            <div className="absolute top-16 right-4">
                 <div className="text-[10px] text-slate-500 space-y-1">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 border border-emerald-500/50 rounded-sm" />
