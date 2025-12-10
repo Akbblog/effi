@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Edges, Environment, ContactShadows, TransformControls } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Edges, Environment, ContactShadows, TransformControls, Text } from '@react-three/drei';
 import { TruckConfig, PackedItem } from '@/lib/types';
 import { useMemo, Suspense, useState, useRef } from 'react';
 import { Loader2, Maximize2, RotateCcw, Move } from 'lucide-react';
@@ -201,6 +201,20 @@ function ItemMesh({ item, truck, isSelected, onSelect, onItemMove }: ItemMeshPro
                     emissiveIntensity={isSelected ? 0.2 : 0}
                 />
                 <Edges color={isSelected ? "white" : "rgba(0,0,0,0.5)"} threshold={15} />
+                {item.name && (
+                    <Text
+                        position={[0, 0, item.dimensions.length / 2 + 0.01]} // Position on the front face (Z-axis)
+                        rotation={[0, 0, 0]}
+                        fontSize={Math.min(item.dimensions.width, item.dimensions.height) * 0.2} // Scale font based on size
+                        color="white"
+                        anchorX="center"
+                        anchorY="middle"
+                        outlineWidth={0.02}
+                        outlineColor="#000000"
+                    >
+                        {item.name.substring(0, 15)}
+                    </Text>
+                )}
             </mesh>
         </group>
     );

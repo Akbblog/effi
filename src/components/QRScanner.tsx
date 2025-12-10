@@ -30,13 +30,24 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                         aspectRatio: window.innerWidth / window.innerHeight, // Full screen aspect ratio
                     },
                     (decodedText) => {
-                        if (html5QrCodeRef.current) {
-                            html5QrCodeRef.current.stop().then(() => {
-                                onScan(decodedText);
-                            }).catch(err => console.error("Failed to stop", err));
-                        }
+                        // Debounce scans (2 second cooldown for same code, 0.5s for different)
+                        const now = Date.now();
+                        // @ts-ignore
+                        const lastTime = window.lastScanTime || 0;
+                        // @ts-ignore
+                        const lastCode = window.lastScanCode || null;
+
+                        if (decodedText === lastCode && now - lastTime < 2000) return;
+                        if (now - lastTime < 1000) return;
+
+                        // @ts-ignore
+                        window.lastScanTime = now;
+                        // @ts-ignore
+                        window.lastScanCode = decodedText;
+
+                        onScan(decodedText);
                     },
-                    () => { } // Ignore frame errors
+                    (val) => { } // Ignore frame errors
                 );
             } catch (err) {
                 console.error("Error starting scanner", err);

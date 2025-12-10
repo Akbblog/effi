@@ -4,8 +4,7 @@ import mongoose from 'mongoose';
 // Flexible schema to store the exact JSON state of a load
 const SavedLoadSchema = new mongoose.Schema({
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String, // Changed from ObjectId to String for better compatibility
         required: true,
     },
     name: {
@@ -25,7 +24,9 @@ const SavedLoadSchema = new mongoose.Schema({
             width: Number,
             height: Number
         },
-        color: String
+        color: String,
+        name: String,
+        deliveryStop: Number
     }],
     createdAt: {
         type: Date,

@@ -19,6 +19,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
 import dynamic from 'next/dynamic';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false });
 
@@ -123,14 +125,59 @@ export default function Dashboard() {
                 body: JSON.stringify({ name, truckConfig: truck, cargoItems })
             });
             if (res.ok) {
-                alert("Load saved successfully!");
+                // alert("Load saved successfully!"); // Removed alert to be cleaner or keep? User said "upon save it should generate pdf".
+                // Better to show success then generate.
+                // alert("Load saved!"); 
                 fetchHistory();
+                generatePDF(name); // Generate PDF
             } else {
-                alert("Failed to save load.");
+                alert("Failed to save load. Please try again.");
             }
+        } catch (error) {
+            console.error(error);
+            alert("An error occurred while saving.");
         } finally {
             setSaving(false);
         }
+    };
+
+    const generatePDF = (loadName: string) => {
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFontSize(18);
+        doc.setTextColor(16, 185, 129); // Emerald-500
+        doc.text("EFFI LOAD MANIFEST", 14, 20);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Load Name: ${loadName}`, 14, 30);
+        doc.text(`Created: ${new Date().toLocaleString()}`, 14, 35);
+        doc.text(`Truck Dimensions: ${truck.length}m x ${truck.width}m x ${truck.height}m`, 14, 40);
+        doc.text(`Total Items: ${finalPackedItems.length} (${utilization}% Utilized)`, 14, 45);
+
+        // Sort by Stop
+        const sortedItems = [...finalPackedItems].sort((a, b) => (a.deliveryStop || 1) - (b.deliveryStop || 1));
+
+        const tableBody = sortedItems.map((item, idx) => [
+            (item.deliveryStop || 1).toString(),
+            item.name || item.type || 'Unknown',
+            `${item.dimensions.length}x${item.dimensions.width}x${item.dimensions.height}`,
+            `${item.position.x.toFixed(2)}, ${item.position.y.toFixed(2)}, ${item.position.z.toFixed(2)}`,
+            item.id.substring(0, 8)
+        ]);
+
+        // @ts-ignore
+        doc.autoTable({
+            startY: 55,
+            head: [['Stop', 'Item Name', 'Dims (m)', 'Pos (x,y,z)', 'ID']],
+            body: tableBody,
+            headStyles: { fillColor: [6, 78, 59], textColor: 255 }, // Dark Green
+            alternateRowStyles: { fillColor: [240, 253, 244] }, // Light Green
+            styles: { fontSize: 9 },
+        });
+
+        doc.save(`Manifest_${loadName.replace(/\s+/g, '_')}.pdf`);
     };
 
     const fetchHistory = async () => {
@@ -156,7 +203,8 @@ export default function Dashboard() {
 
     // QR Scan Handler (Lifted from CargoInputForm)
     const handleScan = async (data: string) => {
-        setShowScanner(false);
+        // setShowScanner(false); // REMOVED to keep scanner open
+
 
         const loadingToast = document.createElement('div');
         loadingToast.className = "fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium animate-in fade-in slide-in-from-top-4 border border-slate-700 flex items-center gap-2";
