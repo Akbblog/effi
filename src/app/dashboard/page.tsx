@@ -12,7 +12,7 @@ import Logo from '@/components/ui/Logo';
 import StatCard from '@/components/ui/StatCard';
 import {
     Trash2, Save, History, Loader2, Play, LogOut,
-    Gauge, Package, PackageX, Box, Shield, ChevronRight
+    Gauge, Package, PackageX, Box, Shield, ChevronRight, X
 } from 'lucide-react';
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from 'next/navigation';
@@ -47,6 +47,29 @@ export default function Dashboard() {
         return packCargo(truck, cargoItems);
     }, [truck, cargoItems]);
 
+    // Manual Editing State
+    const [manualOverrides, setManualOverrides] = useState<Record<string, { x: number, y: number, z: number }>>({});
+
+    const finalPackedItems = useMemo(() => {
+        return packed.map(item => {
+            if (manualOverrides[item.id]) {
+                return { ...item, position: manualOverrides[item.id] };
+            }
+            return item;
+        });
+    }, [packed, manualOverrides]);
+
+    const handleItemMove = (id: string, position: { x: number, y: number, z: number }) => {
+        setManualOverrides(prev => ({
+            ...prev,
+            [id]: position
+        }));
+    };
+
+    const handleResetEdits = () => {
+        setManualOverrides({});
+    };
+
     // 5. Saving / Loading State
     const [saving, setSaving] = useState(false);
     const [loadHistory, setLoadHistory] = useState<any[]>([]);
@@ -59,10 +82,20 @@ export default function Dashboard() {
 
     const handleAddCargo = (items: CargoItem[]) => {
         setCargoItems(prev => [...prev, ...items]);
+        // Ideally we might want to keep overrides if id matches, but usually packing changes everything.
+        // For now, let's reset overrides on new cargo add to prevent collisions
+        setManualOverrides({});
     };
 
     const handleRemoveAll = () => {
         setCargoItems([]);
+        setManualOverrides({});
+    };
+
+    const handleRemoveItem = (id: string) => {
+        setCargoItems(prev => prev.filter(item => item.id !== id));
+        const { [id]: deleted, ...rest } = manualOverrides;
+        setManualOverrides(rest);
     };
 
     const saveLoad = async () => {
@@ -74,6 +107,12 @@ export default function Dashboard() {
             const res = await fetch('/api/loads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                // Save the final state including manual overrides if we want persistence of edits
+                // Current backend expects 'cargoItems' and 'truckConfig' and likely re-calculates or just stores.
+                // To support saving POSITIONS, we would need to update the API to accept 'packedItems' directly.
+                // IMPORTANT: The current MVP likely re-runs algo on load.
+                // For now, we save standard inputs. 
+                // TODO: Update backend to save manual positions if highly requested.
                 body: JSON.stringify({ name, truckConfig: truck, cargoItems })
             });
             if (res.ok) {
@@ -99,6 +138,7 @@ export default function Dashboard() {
         setTruck(load.truckConfig);
         setCargoItems(load.cargoItems);
         setShowHistory(false);
+        setManualOverrides({});
     };
 
     useEffect(() => {
@@ -283,7 +323,7 @@ export default function Dashboard() {
                                             key={item.id}
                                             initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            className="flex items-center justify-between text-xs bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/30"
+                                            className="flex items-center justify-between text-xs bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/30 group"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <div
@@ -294,12 +334,20 @@ export default function Dashboard() {
                                                     {item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid'}
                                                 </span>
                                             </div>
-                                            <span className="font-mono text-slate-500 text-[10px]">
-                                                {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}m
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-mono text-slate-500 text-[10px]">
+                                                    {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}m
+                                                </span>
+                                                <button
+                                                    onClick={() => handleRemoveItem(item.id)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-400 transition-all"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
                                         </motion.div>
                                     ))
-                                )}
+                                )}{/* End map */}
                             </div>
                         </div>
                     </motion.div>
@@ -343,6 +391,15 @@ export default function Dashboard() {
                         <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col">
                             {/* View Toggle */}
                             <div className="floating-panel top-4 right-4 p-1 flex gap-1">
+                                {Object.keys(manualOverrides).length > 0 && (
+                                    <button
+                                        onClick={handleResetEdits}
+                                        className="view-toggle-btn text-amber-400 hover:text-amber-300"
+                                        title="Reset Manual Edits"
+                                    >
+                                        Reset
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setViewMode('2d')}
                                     className={`view-toggle-btn ${viewMode === '2d' ? 'active' : ''}`}
@@ -367,9 +424,13 @@ export default function Dashboard() {
                                     className="w-full h-full"
                                 >
                                     {viewMode === '3d' ? (
-                                        <ThreeViewer truck={truck} packedItems={packed} />
+                                        <ThreeViewer
+                                            truck={truck}
+                                            packedItems={finalPackedItems} // USE FINAL items
+                                            onItemMove={handleItemMove}
+                                        />
                                     ) : (
-                                        <TwoViewer truck={truck} packedItems={packed} />
+                                        <TwoViewer truck={truck} packedItems={finalPackedItems} />
                                     )}
                                 </motion.div>
                             </AnimatePresence>

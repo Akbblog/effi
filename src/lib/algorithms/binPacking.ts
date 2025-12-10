@@ -26,15 +26,13 @@ export function packCargo(truck: TruckConfig, items: CargoItem[]): { packed: Pac
     for (const item of sortedItems) {
         let bestPoint: Position | null = null;
         let pointIndex = -1;
+        let bestRotation = false; // false = default, true = rotated 90deg
 
         // Filter anchor points to remove invalid ones (inside packed items)
         // and sort them.
-        // Optimization: Check for containment lazily.
 
         // Sort logic: 
-        // Fill Z (length/depth) first? Or Y (height)? 
-        // Usually filling bottom (Y=0) then back (Z=0) then left (X=0) is "Best Fit".
-        // Let's bias: lowest Y, then lowest Z, then lowest X.
+        // Bias: lowest Y (gravity), then lowest Z (back), then lowest X (left).
         anchorPoints.sort((a, b) => {
             if (a.y !== b.y) return a.y - b.y; // Bottom first
             if (a.z !== b.z) return a.z - b.z; // Back first
@@ -43,38 +41,62 @@ export function packCargo(truck: TruckConfig, items: CargoItem[]): { packed: Pac
 
         for (let i = 0; i < anchorPoints.length; i++) {
             const point = anchorPoints[i];
-            if (canFit(point, item, truck, packed)) {
+
+            // Try default orientation
+            if (canFit(point, item.dimensions, truck, packed)) {
                 bestPoint = point;
                 pointIndex = i;
+                bestRotation = false;
+                break;
+            }
+
+            // Try rotated orientation (swap length/width)
+            const rotatedDims = { ...item.dimensions, length: item.dimensions.width, width: item.dimensions.length };
+            if (canFit(point, rotatedDims, truck, packed)) {
+                bestPoint = point;
+                pointIndex = i;
+                bestRotation = true;
                 break;
             }
         }
 
         if (bestPoint) {
             // Place it
-            const newPackedItem: PackedItem = { ...item, position: bestPoint };
+            const finalDims = bestRotation
+                ? { ...item.dimensions, length: item.dimensions.width, width: item.dimensions.length }
+                : item.dimensions;
+
+            const newPackedItem: PackedItem = {
+                ...item,
+                dimensions: finalDims,
+                position: bestPoint
+            };
             packed.push(newPackedItem);
 
             // Remove used anchor
             anchorPoints.splice(pointIndex, 1);
 
             // Add new anchors
-            const { width, height, length } = item.dimensions;
+            const { width, height, length } = finalDims;
             const { x, y, z } = bestPoint;
 
             const newAnchors = [
-                { x: x + width, y: y, z: z }, // Right
-                { x: x, y: y + height, z: z }, // Top
-                { x: x, y: y, z: z + length }, // Front
+                { x: x + width, y: y, z: z }, // Right of item
+                { x: x, y: y + height, z: z }, // Top of item
+                { x: x, y: y, z: z + length }, // Front of item
             ];
 
             for (const anchor of newAnchors) {
-                // Optimization: check if anchor is within bounds immediately?
-                // We can leave it for `canFit` but filtering here saves iterations.
                 if (anchor.x < truck.width && anchor.y < truck.height && anchor.z < truck.length) {
-                    // Also check if it's already in the list? Unique points only.
-                    if (!anchorPoints.some(p => p.x === anchor.x && p.y === anchor.y && p.z === anchor.z)) {
-                        anchorPoints.push(anchor);
+                    // Check strict containment in existing items to avoid useless anchors
+                    // (Optional optimization: if anchor is inside any packed item, discard it)
+                    if (!isPointOccupied(anchor, packed)) {
+                        // Unique check
+                        if (!anchorPoints.some(p => Math.abs(p.x - anchor.x) < 0.001
+                            && Math.abs(p.y - anchor.y) < 0.001
+                            && Math.abs(p.z - anchor.z) < 0.001)) {
+                            anchorPoints.push(anchor);
+                        }
                     }
                 }
             }
@@ -87,11 +109,22 @@ export function packCargo(truck: TruckConfig, items: CargoItem[]): { packed: Pac
     return { packed, unpacked };
 }
 
-function canFit(pos: Position, item: CargoItem, truck: TruckConfig, packed: PackedItem[]): boolean {
-    const { width, height, length } = item.dimensions;
+function isPointOccupied(point: Position, packed: PackedItem[]): boolean {
+    for (const p of packed) {
+        // Strict inequality: if point is exactly on edge, it's NOT occupied (valid anchor)
+        if (point.x >= p.position.x && point.x < p.position.x + p.dimensions.width &&
+            point.y >= p.position.y && point.y < p.position.y + p.dimensions.height &&
+            point.z >= p.position.z && point.z < p.position.z + p.dimensions.length) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function canFit(pos: Position, dims: Dimensions, truck: TruckConfig, packed: PackedItem[]): boolean {
+    const { width, height, length } = dims;
 
     // Boundary check
-    // Epsilon for float precision issues? using small tolerance might be good.
     const EPS = 0.001;
 
     if (pos.x + width > truck.width + EPS) return false;
@@ -100,7 +133,7 @@ function canFit(pos: Position, item: CargoItem, truck: TruckConfig, packed: Pack
 
     // Overlap check
     for (const p of packed) {
-        if (intersect(pos, item.dimensions, p.position, p.dimensions)) {
+        if (intersect(pos, dims, p.position, p.dimensions)) {
             return false;
         }
     }
@@ -110,17 +143,13 @@ function canFit(pos: Position, item: CargoItem, truck: TruckConfig, packed: Pack
 
 function intersect(pos1: Position, dim1: Dimensions, pos2: Position, dim2: Dimensions): boolean {
     // Axis-Aligned Bounding Box (AABB) intersection
-    // Strict inequality means touching is allowed.
-    // Intersection if ALL axes overlap.
+    // Strict inequality so touching is allowed
+    // Using a tiny epsilon to forgive floating point errors that cause slight overlaps
+    const EPS = 0.001;
 
-    const xOverlap = pos1.x < pos2.x + dim2.width && pos1.x + dim1.width > pos2.x;
-    const yOverlap = pos1.y < pos2.y + dim2.height && pos1.y + dim1.height > pos2.y;
-    const zOverlap = pos1.z < pos2.z + dim2.length && pos1.z + dim1.length > pos2.z;
-
-    // Note: We might want a tiny margin (EPS) to avoid floating point errors where touching is considered overlap?
-    // But strict < and > usually handles touching surfaces fine (touching != overlap).
-
-    // Wait, if pos1.x = 0, width = 1. pos2.x = 1. 0 < 1+w (2) True. 1 > 1 False. No overlap. Correct.
+    const xOverlap = pos1.x < pos2.x + dim2.width - EPS && pos1.x + dim1.width > pos2.x + EPS;
+    const yOverlap = pos1.y < pos2.y + dim2.height - EPS && pos1.y + dim1.height > pos2.y + EPS;
+    const zOverlap = pos1.z < pos2.z + dim2.length - EPS && pos1.z + dim1.length > pos2.z + EPS;
 
     return xOverlap && yOverlap && zOverlap;
 }

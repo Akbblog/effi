@@ -60,3 +60,13 @@ This phase answers the question: *"Is this load legal, safe, and practical?"*
 - **Concept**: Embedded Shipping Calculator.
 - **Value**: Provide an API hook for Shopify/WooCommerce. When a customer checks out, the store queries EFFI to get an instant, accurate shipping container quote based on the cart's volume.
 
+
+### 5. Hardware Integration (Cubetape & QR)
+- **Problem**: Manual data entry is slow and error-prone.
+- **Solution**: 
+  - **Cubetape Integration**: 
+    - **HID Mode**: "Click & Measure" workflow where the device acts as a keyboard.
+    - **WebHID**: Future exploration for direct device communication.
+  - **QR Code Scanning**:
+    - **Scan-to-Load**: Use device camera to scan item QR and auto-add to the truck.
+    - **Scan-to-Verify**: Verify loaded items match the manifest.
