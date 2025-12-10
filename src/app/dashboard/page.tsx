@@ -210,20 +210,10 @@ export default function Dashboard() {
     }, [status]);
 
     // QR Scan Handler (Lifted from CargoInputForm)
-    const handleScan = async (data: string) => {
-        // setShowScanner(false); // REMOVED to keep scanner open
-
-
-        const loadingToast = document.createElement('div');
-        loadingToast.className = "fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium animate-in fade-in slide-in-from-top-4 border border-slate-700 flex items-center gap-2";
-        loadingToast.innerHTML = `<span class="animate-spin">⏳</span> Processing Scan: ${data}...`;
-        document.body.appendChild(loadingToast);
-
+    const handleScan = async (data: string): Promise<{ success: boolean; isDuplicate?: boolean; message?: string }> => {
         try {
             const res = await fetch(`/api/integrations/lookup?code=${encodeURIComponent(data)}`);
             const json = await res.json();
-
-            if (document.body.contains(loadingToast)) document.body.removeChild(loadingToast);
 
             const COLORS = [
                 '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
@@ -231,6 +221,19 @@ export default function Dashboard() {
             ];
 
             if (json.success && json.data) {
+                // Check for duplicates in current session (optional, simpler to just add)
+                // If we wanted to check duplicates here, we could. 
+                // However, let's assume if it scans, we add it. 
+                // To filter duplicates, we can check against cargoItems.
+                const isDuplicate = cargoItems.some(item => item.name?.includes(data) || item.name === json.data.reference);
+                if (isDuplicate) {
+                    return {
+                        success: false,
+                        isDuplicate: true,
+                        message: 'Item with this reference already exists'
+                    };
+                }
+
                 const newItem: CargoItem = {
                     id: uuidv4(),
                     type: 'custom',
@@ -241,19 +244,23 @@ export default function Dashboard() {
                 };
 
                 handleAddCargo([newItem]);
-                // Success feedback
-                setScanFeedback({ type: 'success', message: 'Item Added Successfully' });
-                setTimeout(() => setScanFeedback(null), 2000);
+
+                return {
+                    success: true,
+                    message: `Added: ${newItem.name}`
+                };
             } else {
-                // Error feedback (Toast instead of alert)
-                setScanFeedback({ type: 'error', message: json.error || 'Invalid Scan' });
-                setTimeout(() => setScanFeedback(null), 3000);
+                return {
+                    success: false,
+                    message: json.error || 'Invalid Scan'
+                };
             }
         } catch (err) {
-            if (document.body.contains(loadingToast)) document.body.removeChild(loadingToast);
             console.error(err);
-            setScanFeedback({ type: 'error', message: 'System Error: Lookup failed' });
-            setTimeout(() => setScanFeedback(null), 3000);
+            return {
+                success: false,
+                message: 'System Error: Lookup failed'
+            };
         }
     };
 
