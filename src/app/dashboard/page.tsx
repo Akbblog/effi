@@ -32,10 +32,6 @@ export default function Dashboard() {
     // const cargoFormRef = useRef<CargoInputFormHandle>(null); 
 
     const [showScanner, setShowScanner] = useState(false);
-    const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-
-    // Track scanned barcodes to prevent duplicates
-    const [scannedBarcodes, setScannedBarcodes] = useState<Set<string>>(new Set());
 
 
     // Auth Check
@@ -315,25 +311,7 @@ export default function Dashboard() {
                 />
             )}
 
-            {/* Scan Feedback Overlay */}
-            <AnimatePresence>
-                {scanFeedback && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8, y: -20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                        className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 backdrop-blur-md ${scanFeedback.type === 'success'
-                            ? 'bg-emerald-500/90 text-white'
-                            : 'bg-red-500/90 text-white'
-                            }`}
-                    >
-                        <div className="bg-white/20 rounded-full p-1">
-                            {scanFeedback.type === 'success' ? <Plus className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                        </div>
-                        <span className="font-semibold">{scanFeedback.message}</span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+
 
             <div className="relative z-10 p-4 md:p-6 lg:p-8">
                 {/* Header */}
