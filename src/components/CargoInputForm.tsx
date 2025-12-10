@@ -39,6 +39,7 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
     const [addedFeedback, setAddedFeedback] = useState<number | null>(null);
     const [showScanner, setShowScanner] = useState(false);
     const [standardBase, setStandardBase] = useState(false);
+    const [deliveryStop, setDeliveryStop] = useState(1);
 
     useImperativeHandle(ref, () => ({
         openScanner: () => {
@@ -64,7 +65,8 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
             type: 'standard',
             dimensions: { length: 1.2, width: 1.2, height: stdHeight },
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
-            name: 'Standard Pallet'
+            name: 'Standard Pallet',
+            deliveryStop: deliveryStop
         }));
         onAdd(newItems);
 
@@ -95,7 +97,8 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
             type: 'custom',
             dimensions: { ...customDims },
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
-            name: standardBase ? 'Measured Skid' : 'Custom Skid'
+            name: standardBase ? 'Measured Skid' : 'Custom Skid',
+            deliveryStop: deliveryStop
         };
         onAdd([newItem]);
 
@@ -106,9 +109,6 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
     // QR Scan Handler
     const handleScan = async (data: string) => {
         setShowScanner(false);
-
-        // Production Ready Architecture: Call Backend Integration Layer
-        // This validates the code against internal DB or External Carrier APIs (Northline, etc.)
 
         const loadingToast = document.createElement('div');
         loadingToast.className = "fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium animate-in fade-in slide-in-from-top-4 border border-slate-700 flex items-center gap-2";
@@ -126,8 +126,9 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
                     id: uuidv4(),
                     type: 'custom',
                     dimensions: json.data.dimensions,
-                    color: json.source === 'carrier_api' ? '#3b82f6' : COLORS[Math.floor(Math.random() * COLORS.length)], // Blue for external freight
-                    name: json.data.description || json.data.reference || `Consignment ${data}`
+                    color: json.source === 'carrier_api' ? '#3b82f6' : COLORS[Math.floor(Math.random() * COLORS.length)],
+                    name: json.data.description || json.data.reference || `Consignment ${data}`,
+                    deliveryStop: deliveryStop
                 };
 
                 onAdd([newItem]);
@@ -160,7 +161,6 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
             )}
 
             <div className="glass-card p-5 rounded-2xl w-full relative overflow-hidden flex flex-col">
-                {/* Success feedback overlay */}
                 <AnimatePresence>
                     {addedFeedback && (
                         <motion.div
@@ -186,19 +186,18 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
                 </AnimatePresence>
 
                 {/* Header with Title and Controls */}
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-5 shrink-0">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-4 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center border border-emerald-500/20">
                             <PackagePlus className="w-4 h-4 text-emerald-400" />
                         </div>
                         <div>
                             <h2 className="text-base font-semibold text-white">Add Cargo</h2>
-                            <p className="text-xs text-slate-500">Manual Entry</p>
+                            <p className="text-xs text-slate-500">Manual & Scan</p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Tabs */}
                         <div className="view-toggle">
                             <button
                                 onClick={() => { setActiveTab('standard'); setError(null); }}
@@ -213,6 +212,19 @@ const CargoInputForm = forwardRef<CargoInputFormHandle, CargoInputFormProps>(({ 
                                 Custom
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Sequence Input (Global) */}
+                <div className="bg-slate-900/50 p-2 rounded-lg border border-slate-700/50 mb-4 flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Delivery Stop</span>
+                        <span className="text-[10px] text-slate-500">For LIFO Sorting</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-800 rounded px-2 py-1">
+                        <button onClick={() => setDeliveryStop(Math.max(1, deliveryStop - 1))} className="text-slate-400 hover:text-white">-</button>
+                        <span className="text-sm font-mono font-medium min-w-[20px] text-center text-emerald-400">{deliveryStop}</span>
+                        <button onClick={() => setDeliveryStop(deliveryStop + 1)} className="text-slate-400 hover:text-white">+</button>
                     </div>
                 </div>
 

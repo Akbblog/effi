@@ -72,6 +72,11 @@ export default function Dashboard() {
     };
 
     // 5. Saving / Loading State
+
+    // Section Toggle State
+    const [openSection, setOpenSection] = useState<'truck' | 'cargo' | null>(null);
+
+    // 5. Saving / Loading State
     const [saving, setSaving] = useState(false);
     const [loadHistory, setLoadHistory] = useState<any[]>([]);
     const [showHistory, setShowHistory] = useState(false);
@@ -83,8 +88,6 @@ export default function Dashboard() {
 
     const handleAddCargo = (items: CargoItem[]) => {
         setCargoItems(prev => [...prev, ...items]);
-        // Ideally we might want to keep overrides if id matches, but usually packing changes everything.
-        // For now, let's reset overrides on new cargo add to prevent collisions
         setManualOverrides({});
     };
 
@@ -108,12 +111,6 @@ export default function Dashboard() {
             const res = await fetch('/api/loads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // Save the final state including manual overrides if we want persistence of edits
-                // Current backend expects 'cargoItems' and 'truckConfig' and likely re-calculates or just stores.
-                // To support saving POSITIONS, we would need to update the API to accept 'packedItems' directly.
-                // IMPORTANT: The current MVP likely re-runs algo on load.
-                // For now, we save standard inputs. 
-                // TODO: Update backend to save manual positions if highly requested.
                 body: JSON.stringify({ name, truckConfig: truck, cargoItems })
             });
             if (res.ok) {
@@ -148,23 +145,43 @@ export default function Dashboard() {
         }
     }, [status]);
 
-    if (status === 'loading') {
-        return (
-            <div className="min-h-screen flex items-center justify-center relative">
-                <AnimatedBackground variant="minimal" />
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center gap-4"
-                >
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-                    <p className="text-slate-400 text-sm">Loading workspace...</p>
-                </motion.div>
-            </div>
-        );
-    }
+    const handleDownloadManifest = () => {
+        if (packed.length === 0) {
+            alert("No items packed to generate manifest.");
+            return;
+        }
 
-    if (!session) return null;
+        let content = `EFFI LOAD MANIFEST\n`;
+        content += `Generated: ${new Date().toLocaleString()}\n`;
+        content += `Truck: ${truck.length}x${truck.width}x${truck.height}m\n`;
+        content += `Total Items: ${packed.length}\n\n`;
+
+        content += `--------------------------------------------------------------------------------\n`;
+        content += `STOP | ITEM TYPE           | DIMENSIONS (LxWxH)   | POSITION (x,y,z) | ID\n`;
+        content += `--------------------------------------------------------------------------------\n`;
+
+        // Sort by Stop (Ascending for driver list - first stop first)
+        const sortedForManifest = [...finalPackedItems].sort((a, b) => (a.deliveryStop || 1) - (b.deliveryStop || 1));
+
+        sortedForManifest.forEach(item => {
+            const dims = `${item.dimensions.length}x${item.dimensions.width}x${item.dimensions.height}`;
+            const pos = `${item.position.x.toFixed(2)},${item.position.y.toFixed(2)},${item.position.z.toFixed(2)}`;
+            const name = (item.name || item.type).padEnd(20).slice(0, 20);
+            const stop = (item.deliveryStop || 1).toString().padStart(4);
+
+            content += `${stop} | ${name} | ${dims.padEnd(20)} | ${pos.padEnd(16)} | ${item.id.slice(0, 8)}\n`;
+        });
+
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `manifest_${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <main className="min-h-screen text-slate-100 relative">
@@ -180,13 +197,15 @@ export default function Dashboard() {
                     <Logo size="md" />
 
                     <div className="flex items-center gap-4">
-                        <div className="hidden md:flex flex-col items-end">
-                            <span className="text-slate-200 font-medium text-sm">{session.user?.name}</span>
-                            <span className="text-xs text-slate-500">{session.user?.email}</span>
-                        </div>
+                        {session?.user && (
+                            <div className="hidden md:flex flex-col items-end">
+                                <span className="text-slate-200 font-medium text-sm">{session.user.name}</span>
+                                <span className="text-xs text-slate-500">{session.user.email}</span>
+                            </div>
+                        )}
 
                         {/* @ts-ignore */}
-                        {session.user.role === 'admin' && (
+                        {session?.user?.role === 'admin' && (
                             <motion.button
                                 onClick={() => router.push('/admin')}
                                 className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
@@ -238,13 +257,14 @@ export default function Dashboard() {
                         {/* Actions Bar */}
                         <div className="grid grid-cols-2 gap-3">
                             <motion.button
-                                onClick={() => setShowHistory(!showHistory)}
-                                className="btn-secondary py-3"
+                                onClick={handleDownloadManifest}
+                                disabled={cargoItems.length === 0}
+                                className="btn-secondary py-3 flex items-center justify-center gap-2"
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
                             >
-                                <History className="w-4 h-4 text-emerald-400" />
-                                {showHistory ? 'Hide' : 'History'}
+                                <Box className="w-4 h-4 text-emerald-400" />
+                                Manifest
                             </motion.button>
                             <motion.button
                                 onClick={saveLoad}
@@ -254,55 +274,42 @@ export default function Dashboard() {
                                 whileTap={{ scale: 0.99 }}
                             >
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                Save
+                                Save Load
                             </motion.button>
                         </div>
 
-                        {/* History Panel */}
-                        <AnimatePresence>
-                            {showHistory && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="glass-gradient p-4 rounded-2xl max-h-[260px] overflow-y-auto">
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <History className="w-3 h-3" />
-                                            Saved Loads
-                                        </h3>
-                                        {loadHistory.length === 0 ? (
-                                            <div className="text-center text-xs text-slate-600 italic py-6">
-                                                No saved loads found.
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {loadHistory.map((load: any) => (
-                                                    <motion.div
-                                                        key={load._id}
-                                                        className="flex items-center justify-between p-3 bg-slate-900/40 rounded-xl hover:bg-slate-900/60 transition group cursor-pointer border border-transparent hover:border-emerald-500/20"
-                                                        onClick={() => restoreLoad(load)}
-                                                        whileHover={{ x: 2 }}
-                                                    >
-                                                        <div>
-                                                            <div className="text-sm font-medium text-slate-200">{load.name}</div>
-                                                            <div className="text-[10px] text-slate-500 mt-0.5">
-                                                                {new Date(load.createdAt).toLocaleDateString()} • {load.cargoItems.length} items
-                                                            </div>
-                                                        </div>
-                                                        <Play className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition" />
-                                                    </motion.div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </motion.div>
+                        {/* Accordion: Truck Config */}
+                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/40">
+                            <button
+                                onClick={() => setOpenSection(openSection === 'truck' ? null : 'truck')}
+                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-slate-800/50 transition"
+                            >
+                                <span>Truck Configuration</span>
+                                <ChevronRight className={`w-4 h-4 transition-transform ${openSection === 'truck' ? 'rotate-90' : ''}`} />
+                            </button>
+                            {openSection === 'truck' && (
+                                <div className="p-4 border-t border-slate-800">
+                                    <TruckConfigForm config={truck} onChange={setTruck} />
+                                </div>
                             )}
-                        </AnimatePresence>
+                        </div>
 
-                        <TruckConfigForm config={truck} onChange={setTruck} />
-                        <CargoInputForm ref={cargoFormRef} onAdd={handleAddCargo} truckConfig={truck} />
+                        {/* Accordion: Add Cargo */}
+                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/40">
+                            <button
+                                onClick={() => setOpenSection(openSection === 'cargo' ? null : 'cargo')}
+                                className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-300 hover:bg-slate-800/50 transition"
+                            >
+                                <span>Add Cargo (Manual)</span>
+                                <ChevronRight className={`w-4 h-4 transition-transform ${openSection === 'cargo' ? 'rotate-90' : ''}`} />
+                            </button>
+                            {openSection === 'cargo' && (
+                                <div className="p-4 border-t border-slate-800">
+                                    <CargoInputForm ref={cargoFormRef} onAdd={handleAddCargo} truckConfig={truck} />
+                                </div>
+                            )}
+                        </div>
+
 
                         {/* Current Manifest */}
                         <div className="glass-card p-5 rounded-2xl">
@@ -327,7 +334,7 @@ export default function Dashboard() {
                                 )}
                             </div>
 
-                            <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1">
+                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {cargoItems.length === 0 ? (
                                     <div className="text-center text-slate-600 text-sm py-8 italic flex flex-col items-center gap-2">
                                         <Box className="w-8 h-8 text-slate-700" />
@@ -341,19 +348,24 @@ export default function Dashboard() {
                                             animate={{ opacity: 1, x: 0 }}
                                             className="flex items-center justify-between text-xs bg-slate-900/50 p-2.5 rounded-lg border border-slate-700/30 group"
                                         >
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-6 h-6 rounded flex items-center justify-center bg-slate-800 text-slate-400 font-mono text-[10px] border border-slate-700">
+                                                    #{item.deliveryStop || 1}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-300 font-medium">
+                                                        {item.name || (item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid')}
+                                                    </span>
+                                                    <span className="text-slate-500 text-[10px]">
+                                                        {item.dimensions.length}x{item.dimensions.width}x{item.dimensions.height}m
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
                                                 <div
                                                     className="w-3 h-3 rounded-sm shadow-sm"
                                                     style={{ backgroundColor: item.color }}
                                                 />
-                                                <span className="text-slate-300">
-                                                    {item.name || (item.type === 'standard' ? 'Standard Pallet' : 'Custom Skid')}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-mono text-slate-500 text-[10px]">
-                                                    {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height}m
-                                                </span>
                                                 <button
                                                     onClick={() => handleRemoveItem(item.id)}
                                                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-400 transition-all"

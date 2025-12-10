@@ -8,12 +8,21 @@ interface Position {
 }
 
 export function packCargo(truck: TruckConfig, items: CargoItem[]): { packed: PackedItem[]; unpacked: CargoItem[] } {
-    // Sort items by Volume Descending to fit large items first
+    // Sort items by Delivery Sequence (LIFO) -> then Volume
+    // Logic: Last Stop (Highest Number) should be packed FIRST (Deepest in truck).
+    // First Stop (Lowest Number) should be packed LAST (Closest to door).
     const sortedItems = [...items].sort((a, b) => {
+        const stopA = a.deliveryStop || 1;
+        const stopB = b.deliveryStop || 1;
+
+        if (stopA !== stopB) {
+            return stopB - stopA; // Descending Sort: Stop 10 before Stop 1
+        }
+
         const volA = a.dimensions.length * a.dimensions.width * a.dimensions.height;
         const volB = b.dimensions.length * b.dimensions.width * b.dimensions.height;
-        // Secondary sort by max dimension if volumes are equal?
-        return volB - volA;
+
+        return volB - volA; // Big items first within same stop
     });
 
     const packed: PackedItem[] = [];

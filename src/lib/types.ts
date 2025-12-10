@@ -15,6 +15,7 @@ export interface CargoItem {
     dimensions: Dimensions;
     color: string;
     name?: string;
+    deliveryStop?: number;
 }
 
 export interface PackedItem extends CargoItem {
