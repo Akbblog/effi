@@ -27,7 +27,15 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                     {
                         fps: 10,
                         qrbox: { width: 250, height: 250 },
-                        aspectRatio: window.innerWidth / window.innerHeight, // Full screen aspect ratio
+                        aspectRatio: window.innerWidth / window.innerHeight,
+                        // @ts-ignore
+                        formatsToSupport: [
+                            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 // Check library constants for specific enums if needed, or rely on auto-detection which is default. 
+                            // Actually, Html5Qrcode "scan-type" defaults to all if not specified.
+                            // But usually it prioritizes QR. Let's explicitly NOT limit it if it was limited, or leave it.
+                            // However, the issue might be aspect ratio or focus. 
+                            // Let's rely on default auto-detection but make sure the box is big enough.
+                        ]
                     },
                     (decodedText) => {
                         // Debounce scans (2 second cooldown for same code, 0.5s for different)

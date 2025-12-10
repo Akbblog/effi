@@ -31,7 +31,7 @@ export default function Dashboard() {
     // const cargoFormRef = useRef<CargoInputFormHandle>(null); 
 
     const [showScanner, setShowScanner] = useState(false);
-    const [scanFeedback, setScanFeedback] = useState<number | null>(null); // To show "Added 1 item" globally if desired
+    const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
 
     // Auth Check
@@ -233,16 +233,19 @@ export default function Dashboard() {
                 };
 
                 handleAddCargo([newItem]);
-                // Optional global feedback
-                setScanFeedback(1);
-                setTimeout(() => setScanFeedback(null), 1500);
+                // Success feedback
+                setScanFeedback({ type: 'success', message: 'Item Added Successfully' });
+                setTimeout(() => setScanFeedback(null), 2000);
             } else {
-                alert(`Scan Error: ${json.error || 'Unknown Data Format'}`);
+                // Error feedback (Toast instead of alert)
+                setScanFeedback({ type: 'error', message: json.error || 'Invalid Scan' });
+                setTimeout(() => setScanFeedback(null), 3000);
             }
         } catch (err) {
             if (document.body.contains(loadingToast)) document.body.removeChild(loadingToast);
             console.error(err);
-            alert("System Error: Failed to lookup consignment.");
+            setScanFeedback({ type: 'error', message: 'System Error: Lookup failed' });
+            setTimeout(() => setScanFeedback(null), 3000);
         }
     };
 
@@ -304,12 +307,15 @@ export default function Dashboard() {
                         initial={{ opacity: 0, scale: 0.8, y: -20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                        className="fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-500/90 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 backdrop-blur-md"
+                        className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 backdrop-blur-md ${scanFeedback.type === 'success'
+                                ? 'bg-emerald-500/90 text-white'
+                                : 'bg-red-500/90 text-white'
+                            }`}
                     >
                         <div className="bg-white/20 rounded-full p-1">
-                            <Plus className="w-4 h-4" />
+                            {scanFeedback.type === 'success' ? <Plus className="w-4 h-4" /> : <X className="w-4 h-4" />}
                         </div>
-                        <span className="font-semibold">Item Added via Scan</span>
+                        <span className="font-semibold">{scanFeedback.message}</span>
                     </motion.div>
                 )}
             </AnimatePresence>

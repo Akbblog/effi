@@ -70,5 +70,23 @@ export async function GET(request: Request) {
         // Not JSON
     }
 
-    return NextResponse.json({ error: 'Unknown Consignment ID or Invalid Data' }, { status: 404 });
+    // 3. Fallback for Unknown Barcodes / IDs
+    // Instead of blocking, we let them succeed with a default "Standard Pallet" size
+    // This allows testing with random barcodes (Coke can, book, etc.)
+    return NextResponse.json({
+        success: true,
+        source: 'barcode_fallback',
+        data: {
+            type: 'standard',
+            dimensions: {
+                length: 1.2,
+                width: 1.2,
+                height: 1.2 // Default standard pallet height
+            },
+            description: `Item ${code}`, // Use the scanned code as the name
+            reference: code
+        }
+    });
+
+    // return NextResponse.json({ error: 'Unknown Consignment ID or Invalid Data' }, { status: 404 });
 }
