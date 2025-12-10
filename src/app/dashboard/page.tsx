@@ -19,8 +19,9 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
 import dynamic from 'next/dynamic';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+// Dynamically import jsPDF to avoid SSR issues
+// import jsPDF from 'jspdf';
+// import 'jspdf-autotable';
 
 const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false });
 
@@ -141,7 +142,11 @@ export default function Dashboard() {
         }
     };
 
-    const generatePDF = (loadName: string) => {
+    const generatePDF = async (loadName: string) => {
+        // Dynamically import to avoid "window is not defined" and other SSR errors
+        const jsPDF = (await import('jspdf')).default;
+        await import('jspdf-autotable');
+
         const doc = new jsPDF();
 
         // Header
@@ -308,8 +313,8 @@ export default function Dashboard() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: -20 }}
                         className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 backdrop-blur-md ${scanFeedback.type === 'success'
-                                ? 'bg-emerald-500/90 text-white'
-                                : 'bg-red-500/90 text-white'
+                            ? 'bg-emerald-500/90 text-white'
+                            : 'bg-red-500/90 text-white'
                             }`}
                     >
                         <div className="bg-white/20 rounded-full p-1">
