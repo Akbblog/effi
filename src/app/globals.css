@@ -68,6 +68,19 @@ body {
     var(--background);
 }
 
+/* Scanner Animation - Pure CSS for performance */
+@keyframes scanline {
+
+  0%,
+  100% {
+    top: 10%;
+  }
+
+  50% {
+    top: 90%;
+  }
+}
+
 /* ============================================
    Card System - Light Theme
    ============================================ */

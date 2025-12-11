@@ -28,6 +28,8 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
     const hasProcessedRef = useRef(false); // Prevent multiple processing
     const lastCodeRef = useRef<string | null>(null);
     const processingLockRef = useRef(false); // Lock to prevent concurrent processing
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce for scan callbacks
+    const lastDecodeTimeRef = useRef<number>(0); // Track decode timing
 
     // Normalize barcode - strip whitespace and make uppercase for comparison
     const normalizeCode = (code: string): string => {
@@ -199,38 +201,50 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                 }
             }
 
-            const html5QrCode = new Html5Qrcode("reader");
+            const html5QrCode = new Html5Qrcode("reader", { verbose: false });
             html5QrCodeRef.current = html5QrCode;
 
+            // Optimized config for faster, smoother scanning
             await html5QrCode.start(
                 { facingMode: "environment" },
                 {
-                    fps: 15, // Reduced FPS to prevent rapid-fire scans
-                    qrbox: { width: 280, height: 280 },
-                    aspectRatio: typeof window !== 'undefined' ? window.innerWidth / window.innerHeight : 1,
+                    fps: 30, // Higher FPS for smoother video
+                    qrbox: { width: 250, height: 250 }, // Slightly smaller for faster processing
+                    disableFlip: true, // Disable flip for performance
                     // @ts-ignore - Enable barcode support
                     experimentalFeatures: {
                         useBarCodeDetectorIfSupported: true
                     },
-                    // Support multiple barcode formats for shipping labels
+                    // Reduced formats for faster detection
                     formatsToSupport: [
                         0,  // QR_CODE
-                        4,  // CODE_128 (common shipping barcode)
-                        2,  // CODE_39
+                        4,  // CODE_128 (most common shipping barcode)
                         8,  // EAN_13
-                        11, // ITF
-                        13, // UPC_A
                     ]
                 },
                 (decodedText: string) => {
+                    // Debounce: ignore rapid-fire decodes (within 300ms)
+                    const now = Date.now();
+                    if (now - lastDecodeTimeRef.current < 300) {
+                        return;
+                    }
+                    lastDecodeTimeRef.current = now;
+
                     if (!mountedRef.current || isProcessing || hasProcessedRef.current || processingLockRef.current) {
                         return;
                     }
 
-                    // Process the code
-                    processCode(decodedText);
+                    // Clear any pending debounce
+                    if (debounceTimerRef.current) {
+                        clearTimeout(debounceTimerRef.current);
+                    }
+
+                    // Debounce the processing to avoid rapid state updates
+                    debounceTimerRef.current = setTimeout(() => {
+                        processCode(decodedText);
+                    }, 100);
                 },
-                () => { } // Ignore frame errors
+                () => { } // Ignore frame errors silently
             );
 
             if (mountedRef.current) {
@@ -259,8 +273,12 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
         hasProcessedRef.current = false;
         processingLockRef.current = false;
         lastCodeRef.current = null;
+        lastDecodeTimeRef.current = 0;
         setScanResult(null);
         setIsProcessing(false);
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
         startScanner();
     }, [startScanner]);
 
@@ -269,22 +287,26 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
         hasProcessedRef.current = false;
         processingLockRef.current = false;
         lastCodeRef.current = null;
+        lastDecodeTimeRef.current = 0;
 
-        const timer = setTimeout(startScanner, 150);
+        const timer = setTimeout(startScanner, 100); // Faster initialization
 
         return () => {
             mountedRef.current = false;
             clearTimeout(timer);
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
 
             if (html5QrCodeRef.current) {
                 const instance = html5QrCodeRef.current;
                 if (instance.isScanning) {
-                    instance.stop().catch(console.error);
+                    instance.stop().catch(() => { }); // Silently ignore cleanup errors
                 }
                 try {
                     instance.clear();
                 } catch (e) {
-                    console.warn("Clear warning:", e);
+                    // Ignore cleanup errors
                 }
             }
         };
@@ -460,22 +482,22 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                 id="reader"
                 className="w-full h-full flex-1 [&>video]:w-full [&>video]:h-full [&>video]:object-cover bg-black relative"
             >
-                {/* Viewfinder Overlay */}
                 {isScanning && !scanError && !scanResult && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div className="relative w-72 h-72">
-                            {/* Corner Brackets */}
-                            <div className="absolute top-0 left-0 w-10 h-10 border-t-3 border-l-3 border-emerald-400 rounded-tl-xl" />
-                            <div className="absolute top-0 right-0 w-10 h-10 border-t-3 border-r-3 border-emerald-400 rounded-tr-xl" />
-                            <div className="absolute bottom-0 left-0 w-10 h-10 border-b-3 border-l-3 border-emerald-400 rounded-bl-xl" />
-                            <div className="absolute bottom-0 right-0 w-10 h-10 border-b-3 border-r-3 border-emerald-400 rounded-br-xl" />
+                        <div className="relative w-64 h-64">
+                            {/* Corner Brackets - Static CSS */}
+                            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-emerald-400 rounded-tl-lg" />
+                            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-emerald-400 rounded-tr-lg" />
+                            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-emerald-400 rounded-bl-lg" />
+                            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-emerald-400 rounded-br-lg" />
 
-                            {/* Scanning Line */}
-                            <motion.div
-                                className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_rgba(16,185,129,0.8)]"
-                                initial={{ top: "10%" }}
-                                animate={{ top: ["10%", "90%", "10%"] }}
-                                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                            {/* Scanning Line - Pure CSS Animation */}
+                            <div
+                                className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent"
+                                style={{
+                                    animation: 'scanline 2s ease-in-out infinite',
+                                    boxShadow: '0 0 8px rgba(16,185,129,0.6)'
+                                }}
                             />
                         </div>
                     </div>
