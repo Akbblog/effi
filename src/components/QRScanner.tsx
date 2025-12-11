@@ -289,11 +289,10 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
         lastCodeRef.current = null;
         lastDecodeTimeRef.current = 0;
 
-        const timer = setTimeout(startScanner, 100); // Faster initialization
+        startScanner(); // Start immediately - no delay
 
         return () => {
             mountedRef.current = false;
-            clearTimeout(timer);
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
@@ -386,24 +385,12 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black flex flex-col"
         >
-            {/* Header Bar */}
-            <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent pt-safe">
-                <div className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                            <ScanLine className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div>
-                            <h2 className="font-semibold text-white">Scan Cargo</h2>
-                            <p className="text-xs text-white/60">
-                                {isProcessing ? 'Processing...' : 'Point at barcode or QR'}
-                            </p>
-                        </div>
-                    </div>
-
+            {/* Minimal Header - Just close button */}
+            <div className="absolute top-0 left-0 right-0 z-20 pt-safe">
+                <div className="flex items-center justify-end p-4">
                     <motion.button
                         onClick={onClose}
-                        className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors border border-white/10"
+                        className="w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         aria-label="Close Scanner"
@@ -419,24 +406,12 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                 {scanResult && renderScanResult()}
             </AnimatePresence>
 
-            {/* Initializing State */}
-            <AnimatePresence>
-                {isInitializing && !scanError && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black"
-                    >
-                        <motion.div
-                            className="w-16 h-16 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        />
-                        <p className="mt-4 text-white/70 text-sm">Starting camera...</p>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Initializing State - Minimal */}
+            {isInitializing && !scanError && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 bg-black">
+                    <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
+            )}
 
             {/* Camera Error */}
             <AnimatePresence>
@@ -504,23 +479,6 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                 )}
             </div>
 
-            {/* Bottom Helper */}
-            {isScanning && !scanError && !scanResult && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent pb-safe"
-                >
-                    <div className="p-6 text-center">
-                        <p className="text-white/80 text-sm font-medium">
-                            Position barcode within the frame
-                        </p>
-                        <p className="text-white/50 text-xs mt-1">
-                            Supports QR codes, CODE128, CODE39 & EAN barcodes
-                        </p>
-                    </div>
-                </motion.div>
-            )}
         </motion.div>
     );
 }
