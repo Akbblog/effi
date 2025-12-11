@@ -28,8 +28,10 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
     const hasProcessedRef = useRef(false); // Prevent multiple processing
     const lastCodeRef = useRef<string | null>(null);
     const processingLockRef = useRef(false); // Lock to prevent concurrent processing
+    const isProcessingRef = useRef(false); // Ref version of isProcessing for stable callbacks
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce for scan callbacks
     const lastDecodeTimeRef = useRef<number>(0); // Track decode timing
+    const processCodeRef = useRef<(code: string) => void>(() => { }); // Stable ref to processCode
 
     // Normalize barcode - strip whitespace and make uppercase for comparison
     const normalizeCode = (code: string): string => {
@@ -81,6 +83,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
 
         // Mark as processing
         hasProcessedRef.current = true;
+        isProcessingRef.current = true;
         setIsProcessing(true);
         setScanResult({ status: 'processing', code: rawCode });
 
@@ -139,6 +142,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                         hasProcessedRef.current = false;
                         processingLockRef.current = false;
                         setScanResult(null);
+                        isProcessingRef.current = false;
                         setIsProcessing(false);
                         // Restart scanner for retry
                         startScanner();
@@ -160,6 +164,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                         hasProcessedRef.current = false;
                         processingLockRef.current = false;
                         setScanResult(null);
+                        isProcessingRef.current = false;
                         setIsProcessing(false);
                         startScanner();
                     }
@@ -167,6 +172,11 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
             }
         }
     }, [isCodeAlreadyScanned, onScan, onClose]);
+
+    // Keep processCodeRef updated
+    useEffect(() => {
+        processCodeRef.current = processCode;
+    }, [processCode]);
 
     const startScanner = useCallback(async () => {
         if (!mountedRef.current) return;
@@ -230,7 +240,8 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                     }
                     lastDecodeTimeRef.current = now;
 
-                    if (!mountedRef.current || isProcessing || hasProcessedRef.current || processingLockRef.current) {
+                    // Use refs to avoid stale closure issues
+                    if (!mountedRef.current || isProcessingRef.current || hasProcessedRef.current || processingLockRef.current) {
                         return;
                     }
 
@@ -241,8 +252,8 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
 
                     // Debounce the processing to avoid rapid state updates
                     debounceTimerRef.current = setTimeout(() => {
-                        processCode(decodedText);
-                    }, 100);
+                        processCodeRef.current(decodedText);
+                    }, 50); // Reduced to 50ms for faster response
                 },
                 () => { } // Ignore frame errors silently
             );
@@ -255,23 +266,24 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
             console.error("Error starting scanner", err);
             if (mountedRef.current) {
                 if (err?.message?.includes('Permission denied') || err?.name === 'NotAllowedError') {
-                    setScanError("Camera permission denied. Please allow camera access in your browser settings.");
+                    setScanError("Camera permission denied. Please allow camera access.");
                 } else if (err?.message?.includes('not found') || err?.name === 'NotFoundError') {
-                    setScanError("No camera found. Please ensure a camera is connected.");
+                    setScanError("No camera found.");
                 } else if (err?.message?.includes('already in use') || err?.name === 'NotReadableError') {
-                    setScanError("Camera is being used by another application. Please close other apps using the camera.");
+                    setScanError("Camera is in use by another app.");
                 } else {
-                    setScanError("Could not start camera. Please check permissions and try again.");
+                    setScanError("Could not start camera.");
                 }
                 setIsInitializing(false);
             }
         }
-    }, [isProcessing, processCode]);
+    }, []); // No dependencies - uses refs for everything
 
     const handleRetry = useCallback(() => {
         setScanError(null);
         hasProcessedRef.current = false;
         processingLockRef.current = false;
+        isProcessingRef.current = false;
         lastCodeRef.current = null;
         lastDecodeTimeRef.current = 0;
         setScanResult(null);
@@ -286,13 +298,20 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
         mountedRef.current = true;
         hasProcessedRef.current = false;
         processingLockRef.current = false;
+        isProcessingRef.current = false;
         lastCodeRef.current = null;
         lastDecodeTimeRef.current = 0;
 
-        startScanner(); // Start immediately - no delay
+        // Wait for next frame to ensure DOM is ready, then start
+        const frame = requestAnimationFrame(() => {
+            if (mountedRef.current) {
+                startScanner();
+            }
+        });
 
         return () => {
             mountedRef.current = false;
+            cancelAnimationFrame(frame);
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
@@ -309,7 +328,8 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                 }
             }
         };
-    }, [startScanner]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run only once on mount
 
     // Render scan result overlay
     const renderScanResult = () => {
