@@ -34,7 +34,7 @@ export default function ThreeViewer({ truck, packedItems, onItemMove, showLabels
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     return (
-        <div className="w-full h-full min-h-[400px] relative group">
+        <div className="w-full h-full min-h-[350px] sm:min-h-[400px] relative group">
             {/* Glass container */}
             <div className="absolute inset-0 glass-card-static rounded-2xl overflow-hidden">
                 <Suspense fallback={<LoadingFallback />}>

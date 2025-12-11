@@ -26,7 +26,7 @@ export default function TwoViewer({ truck, packedItems, showLabels = true, label
     };
 
     return (
-        <div className="w-full h-full min-h-[300px] p-4 flex flex-col relative bg-gradient-to-b from-gray-50 to-gray-100">
+        <div className="w-full h-full min-h-[320px] sm:min-h-[350px] p-4 flex flex-col relative bg-gradient-to-b from-gray-50 to-gray-100">
             {/* Viewer Container */}
             <div className="flex-1 flex items-center justify-center relative">
                 <div

@@ -694,7 +694,7 @@ export default function Dashboard() {
                         </div>
 
                         {/* Viewer Container - Integrated Design */}
-                        <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col glass-card rounded-2xl overflow-hidden">
+                        <div className="relative w-full min-h-[400px] md:min-h-[500px] lg:min-h-0 aspect-auto sm:aspect-[3/4] md:aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col glass-card rounded-2xl overflow-hidden">
                             {/* Integrated Header with View Toggle */}
                             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white/80">
                                 <div className="flex items-center gap-3">
