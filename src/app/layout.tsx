@@ -17,6 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "EFFI - Load Optimizer",
   description: "Efficient Logistics Load Optimization Tool",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg'
+  }
 };
 
 export default function RootLayout({

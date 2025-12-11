@@ -46,8 +46,8 @@
 - [x] **Load History**: View and restore previous load configurations.
 - [x] **Manifest History API**: Endpoints for saving and retrieving user-specific data.
 
-### Phase 4: Advanced Features (FUTURE)
-- [ ] **Complex Algo**: Stacking rules (heavy on bottom), weight distribution.
+### Phase 4: Advanced Features (IN PROGRESS)
+- [x] **Complex Algo**: Stacking rules (heavy on bottom), weight distribution.
 - [ ] **Multi-Truck**: Loading multiple trucks in one go.
 - [ ] **PDF Export**: Generate loading manifest / Bill of Lading.
 - [ ] **Email Notifications**: Auto-email logic for "Account Approved".

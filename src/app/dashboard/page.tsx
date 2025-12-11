@@ -32,6 +32,39 @@ export default function Dashboard() {
     // const cargoFormRef = useRef<CargoInputFormHandle>(null); 
 
     const [showScanner, setShowScanner] = useState(false);
+    // Candidate scanned item awaiting confirmation
+    const [scanCandidate, setScanCandidate] = useState<null | {
+        code: string;
+        data: any;
+        source: string;
+    }>(null);
+    const [saveSkuOnConfirm, setSaveSkuOnConfirm] = useState(true);
+    const [modalName, setModalName] = useState('');
+    const [modalDims, setModalDims] = useState<{ length: number; width: number; height: number }>({ length: 1.2, width: 1.2, height: 1.2 });
+    // Save feedback state for SKU saving
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+    const [saveMessage, setSaveMessage] = useState('');
+
+    useEffect(() => {
+        if (scanCandidate) {
+            setModalName(scanCandidate.data.description || scanCandidate.data.reference || `Item ${scanCandidate.code}`);
+            setModalDims(scanCandidate.data.dimensions || { length: 1.2, width: 1.2, height: 1.2 });
+            // reset save feedback when new candidate arrives
+            setSaveStatus('idle');
+            setSaveMessage('');
+        }
+    }, [scanCandidate]);
+
+    // auto-clear success/error messages after a few seconds
+    useEffect(() => {
+        if (saveStatus === 'success' || saveStatus === 'error') {
+            const t = setTimeout(() => {
+                setSaveStatus('idle');
+                setSaveMessage('');
+            }, 4000);
+            return () => clearTimeout(t);
+        }
+    }, [saveStatus]);
 
 
     // Auth Check
@@ -53,6 +86,9 @@ export default function Dashboard() {
 
     // 3. View State
     const [viewMode, setViewMode] = useState<'3d' | '2d'>('2d');
+    // Labeling controls for 3D viewer
+    const [showLabels, setShowLabels] = useState<boolean>(true);
+    const [labelMode, setLabelMode] = useState<'short' | 'detailed'>('short');
 
     // 4. Algorithm Calculation
     const { packed, unpacked } = useMemo(() => {
@@ -211,54 +247,81 @@ export default function Dashboard() {
             const res = await fetch(`/api/integrations/lookup?code=${encodeURIComponent(data)}`);
             const json = await res.json();
 
-            const COLORS = [
-                '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
-                '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'
-            ];
-
             if (json.success && json.data) {
-                // Check for duplicates in current session (optional, simpler to just add)
-                // If we wanted to check duplicates here, we could. 
-                // However, let's assume if it scans, we add it. 
-                // To filter duplicates, we can check against cargoItems.
-                const isDuplicate = cargoItems.some(item => item.name?.includes(data) || item.name === json.data.reference);
-                if (isDuplicate) {
-                    return {
-                        success: false,
-                        isDuplicate: true,
-                        message: 'Item with this reference already exists'
-                    };
-                }
-
-                const newItem: CargoItem = {
-                    id: uuidv4(),
-                    type: 'custom',
-                    dimensions: json.data.dimensions,
-                    color: json.source === 'carrier_api' ? '#3b82f6' : COLORS[Math.floor(Math.random() * COLORS.length)],
-                    name: json.data.description || json.data.reference || `Consignment ${data}`,
-                    deliveryStop: 1 // Default to 1 if scanned, or could prompt.
-                };
-
-                handleAddCargo([newItem]);
-
-                return {
-                    success: true,
-                    message: `Added: ${newItem.name}`
-                };
+                // Keep candidate for operator confirmation before adding
+                setScanCandidate({ code: data, data: json.data, source: json.source });
+                // open scanner can remain open or close depending on UX; leave it open for now
+                return { success: true, message: 'Scan received, awaiting confirmation' };
             } else {
-                return {
-                    success: false,
-                    message: json.error || 'Invalid Scan'
-                };
+                return { success: false, message: json.error || 'Invalid Scan' };
             }
         } catch (err) {
             console.error(err);
-            return {
-                success: false,
-                message: 'System Error: Lookup failed'
-            };
+            return { success: false, message: 'System Error: Lookup failed' };
         }
     };
+
+    // Confirm scan candidate: add to cargoItems and optionally save SKU
+    const confirmScanCandidate = async (opts?: { saveSku?: boolean; name?: string; dimensions?: { length: number; width: number; height: number } }) => {
+        if (!scanCandidate) return;
+        const name = opts?.name ?? (scanCandidate.data.description || scanCandidate.data.reference || `Item ${scanCandidate.code}`);
+        const dims = opts?.dimensions ?? scanCandidate.data.dimensions ?? { length: 1.2, width: 1.2, height: 1.2 };
+        const weight = scanCandidate.data.weight ?? undefined; // Get weight from scan data
+
+        const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
+
+        const newItem: CargoItem = {
+            id: uuidv4(),
+            type: 'custom',
+            dimensions: dims,
+            color: scanCandidate.source === 'carrier_api' ? '#3b82f6' : COLORS[Math.floor(Math.random() * COLORS.length)],
+            name,
+            deliveryStop: 1,
+            weight // Include weight for stacking rules
+        };
+
+        handleAddCargo([newItem]);
+
+        // Optionally save to SKU DB (requires admin - server enforces)
+        if (opts?.saveSku) {
+            // Client-side check: only attempt save if current user is admin. Server also enforces admin.
+            // @ts-ignore
+            const isAdmin = session?.user?.role === 'admin';
+            if (!isAdmin) {
+                setSaveStatus('error');
+                setSaveMessage('Only admins can save SKUs.');
+            } else {
+                setSaveStatus('saving');
+                try {
+                    const res = await fetch('/api/sku', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ gtin: scanCandidate.code, name, dimensions: dims, barcodes: [scanCandidate.code] })
+                    });
+                    const json = await res.json().catch(() => null);
+                    if (res.ok && json && json.ok) {
+                        setSaveStatus('success');
+                        setSaveMessage('SKU saved');
+                    } else if (res.status === 403) {
+                        setSaveStatus('error');
+                        setSaveMessage('Forbidden: not an admin');
+                    } else {
+                        setSaveStatus('error');
+                        setSaveMessage((json && json.message) || 'Failed to save SKU');
+                    }
+                } catch (e) {
+                    console.error('Failed to save SKU', e);
+                    setSaveStatus('error');
+                    setSaveMessage('Network error saving SKU');
+                }
+            }
+        }
+
+        // Clear candidate
+        setScanCandidate(null);
+    };
+
+    const cancelScanCandidate = () => setScanCandidate(null);
 
 
     const handleDownloadManifest = () => {
@@ -310,6 +373,79 @@ export default function Dashboard() {
                     onClose={() => setShowScanner(false)}
                 />
             )}
+
+            {/* Scan Confirmation Modal */}
+            <AnimatePresence>
+                {scanCandidate && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    >
+                        <div className="absolute inset-0 bg-black/40" onClick={cancelScanCandidate} />
+
+                        <motion.div initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: 20 }} className="relative w-full max-w-md bg-white rounded-xl shadow-lg p-6">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold">Confirm Scanned Item</h3>
+                                    <p className="text-xs text-gray-500">Code: {scanCandidate.code} • Source: {scanCandidate.source}</p>
+                                </div>
+                                <button onClick={cancelScanCandidate} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                            </div>
+
+                            <div className="mt-4 space-y-3">
+                                <label className="block text-xs text-gray-600">Name</label>
+                                <input value={modalName} onChange={(e) => setModalName(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <label className="block text-xs text-gray-600">Length (m)</label>
+                                        <input type="number" step="0.01" value={modalDims.length} onChange={(e) => setModalDims(d => ({ ...d, length: Number(e.target.value) }))} className="w-full border rounded-md px-2 py-1" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-600">Width (m)</label>
+                                        <input type="number" step="0.01" value={modalDims.width} onChange={(e) => setModalDims(d => ({ ...d, width: Number(e.target.value) }))} className="w-full border rounded-md px-2 py-1" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-600">Height (m)</label>
+                                        <input type="number" step="0.01" value={modalDims.height} onChange={(e) => setModalDims(d => ({ ...d, height: Number(e.target.value) }))} className="w-full border rounded-md px-2 py-1" />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {/* Disable the checkbox for non-admin users */}
+                                    {/* @ts-ignore */}
+                                    <input id="saveSku" type="checkbox" checked={saveSkuOnConfirm} onChange={(e) => setSaveSkuOnConfirm(e.target.checked)} disabled={session?.user?.role !== 'admin'} />
+                                    <label htmlFor="saveSku" className="text-sm text-gray-700">Save this item to SKU master</label>
+                                    { /* show a small helper when not admin */}
+                                    { /* @ts-ignore */}
+                                    {session?.user?.role !== 'admin' && (
+                                        <span className="text-xs text-gray-400 italic ml-2">(Admin only)</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="mt-5 flex items-center justify-end gap-3">
+                                <button onClick={cancelScanCandidate} className="px-4 py-2 rounded-md border border-gray-200 text-sm">Cancel</button>
+                                <button onClick={() => confirmScanCandidate({ saveSku: saveSkuOnConfirm, name: modalName, dimensions: modalDims })} className="px-4 py-2 rounded-md bg-red-600 text-white text-sm">Confirm & Add</button>
+                            </div>
+                            {/* Save feedback */}
+                            <div className="mt-3">
+                                {saveStatus === 'saving' && (
+                                    <div className="flex items-center gap-2 text-sm text-gray-600"><Loader2 className="w-4 h-4 animate-spin" /> Saving SKU...</div>
+                                )}
+                                {saveStatus === 'success' && (
+                                    <div className="text-sm text-green-600">{saveMessage || 'Saved'}</div>
+                                )}
+                                {saveStatus === 'error' && (
+                                    <div className="text-sm text-red-600">{saveMessage || 'Save failed'}</div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
 
 
@@ -557,53 +693,78 @@ export default function Dashboard() {
                             />
                         </div>
 
-                        {/* Viewer Container */}
-                        <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col">
-                            {/* View Toggle */}
-                            <div className="floating-panel !relative md:!absolute mx-auto mb-3 md:mb-0 md:mx-0 top-auto right-auto md:top-4 md:right-4 p-1 flex gap-1 transform md:transform-none">
-                                {Object.keys(manualOverrides).length > 0 && (
-                                    <button
-                                        onClick={handleResetEdits}
-                                        className="view-toggle-btn text-red-500 hover:text-red-600"
-                                        title="Reset Manual Edits"
-                                    >
-                                        Reset
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => setViewMode('2d')}
-                                    className={`view-toggle-btn ${viewMode === '2d' ? 'active' : ''}`}
-                                >
-                                    2D Side
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('3d')}
-                                    className={`view-toggle-btn ${viewMode === '3d' ? 'active' : ''}`}
-                                >
-                                    3D View
-                                </button>
+                        {/* Viewer Container - Integrated Design */}
+                        <div className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-[560px] flex flex-col glass-card rounded-2xl overflow-hidden">
+                            {/* Integrated Header with View Toggle */}
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white/80">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                    <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                                        {viewMode === '2d' ? 'Side Profile' : '3D Interactive'}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {/* Reset button (conditional) */}
+                                    {Object.keys(manualOverrides).length > 0 && (
+                                        <button
+                                            onClick={handleResetEdits}
+                                            className="text-xs font-medium text-red-500 hover:bg-red-50 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                            title="Reset Manual Edits"
+                                        >
+                                            <X className="w-3 h-3" />
+                                            Reset
+                                        </button>
+                                    )}
+
+                                    {/* View Mode Toggle - Pill Style */}
+                                    <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                                        <button
+                                            onClick={() => setViewMode('2d')}
+                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '2d'
+                                                ? 'bg-white text-gray-800 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            2D
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('3d')}
+                                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '3d'
+                                                ? 'bg-white text-gray-800 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            3D
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={viewMode}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-full h-full"
-                                >
-                                    {viewMode === '3d' ? (
-                                        <ThreeViewer
-                                            truck={truck}
-                                            packedItems={finalPackedItems} // USE FINAL items
-                                            onItemMove={handleItemMove}
-                                        />
-                                    ) : (
-                                        <TwoViewer truck={truck} packedItems={finalPackedItems} />
-                                    )}
-                                </motion.div>
-                            </AnimatePresence>
+                            {/* Viewer Content */}
+                            <div className="flex-1 relative">
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={viewMode}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="w-full h-full"
+                                    >
+                                        {viewMode === '3d' ? (
+                                            <ThreeViewer
+                                                truck={truck}
+                                                packedItems={finalPackedItems}
+                                                onItemMove={handleItemMove}
+                                                showLabels={false}
+                                            />
+                                        ) : (
+                                            <TwoViewer truck={truck} packedItems={finalPackedItems} showLabels={false} />
+                                        )}
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
                         </div>
 
                         {/* Unpacked Warning */}

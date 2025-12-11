@@ -30,12 +30,16 @@ export default function Logo({ size = 'md', showText = true, animated = true }: 
             className="flex items-center gap-3"
             {...animationProps}
         >
-            {/* Icon container with DHL red gradient */}
+            {/* Icon container with favicon */}
             <div
-                className="relative flex items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg"
+                className="relative flex items-center justify-center rounded-xl overflow-hidden shadow-lg"
                 style={{ width: sizeConfig.container, height: sizeConfig.container }}
             >
-                <Cuboid className="text-white" style={{ width: sizeConfig.icon, height: sizeConfig.icon }} />
+                <img
+                    src="/favicon.svg"
+                    alt="EFFI"
+                    className="w-full h-full object-cover"
+                />
             </div>
 
             {showText && (

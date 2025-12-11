@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Edges, ContactShadows, TransformControls } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Edges, ContactShadows, TransformControls, Html } from '@react-three/drei';
 import { TruckConfig, PackedItem } from '@/lib/types';
 import { useMemo, Suspense, useState } from 'react';
 import { Loader2, RotateCcw, Move } from 'lucide-react';
@@ -11,6 +11,8 @@ interface ThreeViewerProps {
     truck: TruckConfig;
     packedItems: PackedItem[];
     onItemMove?: (id: string, position: { x: number, y: number, z: number }) => void;
+    showLabels?: boolean;
+    labelMode?: 'short' | 'detailed';
 }
 
 function LoadingFallback() {
@@ -24,7 +26,7 @@ function LoadingFallback() {
     );
 }
 
-export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeViewerProps) {
+export default function ThreeViewer({ truck, packedItems, onItemMove, showLabels = true, labelMode = 'short' }: ThreeViewerProps) {
     // Center camera based on truck size
     const center = useMemo(() => [truck.width / 2, truck.height / 2, truck.length / 2], [truck]);
     const maxDim = Math.max(truck.width, truck.height, truck.length);
@@ -103,6 +105,8 @@ export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeVie
                                     setSelectedId(item.id);
                                 }}
                                 onItemMove={onItemMove}
+                                showLabel={showLabels}
+                                labelMode={labelMode}
                             />
                         ))}
                     </Canvas>
@@ -126,11 +130,6 @@ export default function ThreeViewer({ truck, packedItems, onItemMove }: ThreeVie
                     </div>
                 </div>
             )}
-
-            {/* View label */}
-            <div className="absolute bottom-4 right-4 text-xs text-gray-500 font-mono bg-white/80 backdrop-blur border border-gray-200 px-2 py-1 rounded pointer-events-none">
-                3D Interactive View
-            </div>
         </div>
     );
 }
@@ -141,9 +140,11 @@ interface ItemMeshProps {
     isSelected: boolean;
     onSelect: (e: any) => void;
     onItemMove?: (id: string, position: { x: number, y: number, z: number }) => void;
+    showLabel?: boolean;
+    labelMode?: 'short' | 'detailed';
 }
 
-function ItemMesh({ item, truck, isSelected, onSelect, onItemMove }: ItemMeshProps) {
+function ItemMesh({ item, truck, isSelected, onSelect, onItemMove, showLabel = true, labelMode = 'short' }: ItemMeshProps) {
     // Geometry is centered by default. We need to move it so its corner is at item.position
     // Center = item.position + dim/2
     const cx = item.position.x + item.dimensions.width / 2;
@@ -202,6 +203,28 @@ function ItemMesh({ item, truck, isSelected, onSelect, onItemMove }: ItemMeshPro
                 />
                 <Edges color={isSelected ? "white" : "rgba(0,0,0,0.5)"} threshold={15} />
             </mesh>
+            {showLabel && (
+                <Html
+                    position={[cx, cy + item.dimensions.height / 2 + 0.04, cz]}
+                    center
+                    occlude
+                    distanceFactor={Math.max(1, 4 / Math.max(truck.width, truck.length, truck.height))}
+                >
+                    <div className={`px-2 py-1 rounded-md shadow-md text-xs bg-white/95 border border-gray-200 ${isSelected ? 'ring-1 ring-red-300' : ''}`}>
+                        {labelMode === 'short' ? (
+                            <div className="font-medium text-gray-800">
+                                {item.name ? (item.name.length > 24 ? item.name.slice(0, 21) + '...' : item.name) : `#${item.id.slice(0, 6)}`}
+                            </div>
+                        ) : (
+                            <div className="text-xs text-gray-800">
+                                <div className="font-semibold">{item.name || `#${item.id.slice(0, 6)}`}</div>
+                                <div className="text-gray-500">{item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} m</div>
+                                <div className="text-gray-500">Stop {item.deliveryStop || 1}</div>
+                            </div>
+                        )}
+                    </div>
+                </Html>
+            )}
         </group>
     );
 }

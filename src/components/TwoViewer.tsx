@@ -7,26 +7,26 @@ import { useState } from 'react';
 interface TwoViewerProps {
     truck: TruckConfig;
     packedItems: PackedItem[];
+    showLabels?: boolean;
+    labelMode?: 'short' | 'detailed';
 }
 
-export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
+export default function TwoViewer({ truck, packedItems, showLabels = true, labelMode = 'short' }: TwoViewerProps) {
     const [hoveredItem, setHoveredItem] = useState<PackedItem | null>(null);
 
-    return (
-        <div className="w-full h-full min-h-[400px] glass-card-static rounded-2xl overflow-hidden p-6 flex flex-col relative">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                        Side Profile View
-                    </span>
-                </div>
-                <div className="text-xs text-gray-400 font-mono">
-                    {truck.length}m × {truck.height}m
-                </div>
-            </div>
+    // Helper to get label text
+    const getLabel = (item: PackedItem) => {
+        const name = item.name || (item.type === 'standard' ? 'Pallet' : 'Item');
+        if (labelMode === 'detailed') {
+            // Detailed: show name + dimensions
+            return `${name} (${item.dimensions.length}×${item.dimensions.width}×${item.dimensions.height}m)`;
+        }
+        // Short mode: show abbreviated name (max 6 chars)
+        return name.length > 6 ? name.slice(0, 5) + '…' : name;
+    };
 
+    return (
+        <div className="w-full h-full min-h-[300px] p-4 flex flex-col relative bg-gradient-to-b from-gray-50 to-gray-100">
             {/* Viewer Container */}
             <div className="flex-1 flex items-center justify-center relative">
                 <div
@@ -81,7 +81,7 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: idx * 0.02 }}
-                                className="absolute cursor-pointer transition-all duration-200"
+                                className="absolute cursor-pointer transition-all duration-200 flex items-center justify-center"
                                 style={{
                                     left: `${left}%`,
                                     bottom: `${bottom}%`,
@@ -99,7 +99,21 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                                 }}
                                 onMouseEnter={() => setHoveredItem(item)}
                                 onMouseLeave={() => setHoveredItem(null)}
-                            />
+                            >
+                                {/* Label */}
+                                {showLabels && (
+                                    <span
+                                        className="text-white font-bold drop-shadow-md truncate px-0.5"
+                                        style={{
+                                            fontSize: labelMode === 'detailed' ? '0.5rem' : '0.625rem',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                                            maxWidth: '100%',
+                                        }}
+                                    >
+                                        {getLabel(item)}
+                                    </span>
+                                )}
+                            </motion.div>
                         );
                     })}
 
@@ -132,19 +146,7 @@ export default function TwoViewer({ truck, packedItems }: TwoViewerProps) {
                 </motion.div>
             )}
 
-            {/* Legend */}
-            <div className="absolute top-16 right-4">
-                <div className="text-[10px] text-slate-500 space-y-1">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 border border-emerald-500/50 rounded-sm" />
-                        <span>Truck Bay</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-amber-500 rounded-sm" />
-                        <span>Cargo</span>
-                    </div>
-                </div>
-            </div>
+            {/* Legend removed - truck bay is self-evident and cargo items have varied colors */}
         </div>
     );
 }

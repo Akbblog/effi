@@ -16,8 +16,10 @@ export interface CargoItem {
     color: string;
     name?: string;
     deliveryStop?: number;
+    weight?: number; // Weight in kg - used for stacking rules (heavy items on bottom)
 }
 
 export interface PackedItem extends CargoItem {
     position: { x: number; y: number; z: number };
 }
+

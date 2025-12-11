@@ -22,6 +22,15 @@ const ScanHistorySchema = new mongoose.Schema({
         width: Number,
         height: Number,
     },
+    // Resolved metadata and audit fields
+    resolvedName: String,
+    resolvedDimensions: {
+        length: Number,
+        width: Number,
+        height: Number,
+    },
+    source: String, // sku_db | carrier_api | internal_qr | barcode_fallback
+    raw: mongoose.Schema.Types.Mixed,
     createdAt: {
         type: Date,
         default: Date.now,

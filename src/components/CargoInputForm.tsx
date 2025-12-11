@@ -61,6 +61,7 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
             name: 'Standard Pallet',
             deliveryStop: deliveryStop
+            // Note: weight comes from SKU scanning, not manual input
         }));
         onAdd(newItems);
 
@@ -93,6 +94,7 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
             name: standardBase ? 'Measured Skid' : 'Custom Skid',
             deliveryStop: deliveryStop
+            // Note: weight comes from SKU scanning, not manual input
         };
         onAdd([newItem]);
 
@@ -164,7 +166,7 @@ export default function CargoInputForm({ onAdd, truckConfig }: CargoInputFormPro
                 </div>
             </div>
 
-            {/* Sequence Input (Global) */}
+            {/* Delivery Stop Input */}
             <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 mb-4 flex items-center justify-between">
                 <div className="flex flex-col">
                     <span className="text-[10px] text-gray-600 font-bold uppercase tracking-wider">Delivery Stop</span>
