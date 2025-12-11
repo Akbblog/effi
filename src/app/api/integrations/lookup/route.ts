@@ -122,7 +122,60 @@ export async function GET(request: Request) {
         }
     }
 
-    // 3. Fallback for Unknown Barcodes / IDs
+    // 3. Fallback: Parse dimensions from the barcode string (Regex Heuristic)
+    if (!responseData) {
+        // Look for patterns like "10x20x30", "1.2x0.8x1.0", "500x400x300"
+        // Regex matches 3 numbers separated by 'x' or '*' or '-'
+        // Captures: 1=L, 2=W, 3=H
+        const dimRegex = /(\d+(?:\.\d+)?)\s*[xX*]\s*(\d+(?:\.\d+)?)\s*[xX*]\s*(\d+(?:\.\d+)?)/;
+        const match = code.match(dimRegex);
+
+        if (match) {
+            let l = parseFloat(match[1]);
+            let w = parseFloat(match[2]);
+            let h = parseFloat(match[3]);
+
+            // Heuristic for units:
+            // If any dimension is > 4, assume it's in cm (or mm), because standard pallets/cargo rarely exceed 4m.
+            // Adjust to meters.
+            if (l > 4 || w > 4 || h > 4) {
+                // Double check for mm vs cm?
+                // If > 400, likely mm. If > 4, likely cm.
+                // Simple logic: if > 10, divide by 100 (cm -> m).
+                // If > 1000? maybe mm. Let's stick to cm for > 4 for now as safe bet for "box sizes" which are usually 20-100cm.
+                // A 500mm box = 50cm.
+
+                // Refined Heuristic:
+                // If any dim > 100, assume mm -> divide by 1000
+                // Else if any dim > 4, assume cm -> divide by 100
+
+                if (l > 100 || w > 100 || h > 100) {
+                    l /= 1000;
+                    w /= 1000;
+                    h /= 1000;
+                } else {
+                    l /= 100;
+                    w /= 100;
+                    h /= 100;
+                }
+            }
+
+            source = 'barcode_parsing';
+            responseData = {
+                type: 'custom',
+                dimensions: {
+                    length: parseFloat(l.toFixed(3)),
+                    width: parseFloat(w.toFixed(3)),
+                    height: parseFloat(h.toFixed(3))
+                },
+                weight: null,
+                description: `Item ${match[0]}`, // "Item 50x50x50"
+                reference: code
+            };
+        }
+    }
+
+    // 4. Fallback for Unknown Barcodes / IDs (Default Pallet)
     if (!responseData) {
         source = 'barcode_fallback';
         responseData = {
