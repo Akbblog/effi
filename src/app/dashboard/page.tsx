@@ -48,7 +48,7 @@ export default function Dashboard() {
     useEffect(() => {
         if (scanCandidate) {
             setModalName(scanCandidate.data.description || scanCandidate.data.reference || `Item ${scanCandidate.code}`);
-            setModalDims(scanCandidate.data.dimensions || { length: 1.2, width: 1.2, height: 1.2 });
+            setModalDims(scanCandidate.data.dimensions || { length: 0, width: 0, height: 0 });
             // reset save feedback when new candidate arrives
             setSaveStatus('idle');
             setSaveMessage('');
@@ -272,7 +272,8 @@ export default function Dashboard() {
     const confirmScanCandidate = async (opts?: { name?: string; dimensions?: { length: number; width: number; height: number } }) => {
         if (!scanCandidate) return;
         const name = opts?.name ?? (scanCandidate.data.description || scanCandidate.data.reference || `Item ${scanCandidate.code}`);
-        const dims = opts?.dimensions ?? scanCandidate.data.dimensions ?? { length: 1.2, width: 1.2, height: 1.2 };
+        // If dims are null (fallback scan), default to 0 to force user input or show as empty
+        const dims = opts?.dimensions ?? scanCandidate.data.dimensions ?? { length: 0, width: 0, height: 0 };
         const weight = scanCandidate.data.weight ?? undefined; // Get weight from scan data
 
         const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];

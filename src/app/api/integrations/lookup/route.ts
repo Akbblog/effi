@@ -190,18 +190,17 @@ export async function POST(request: Request) {
         }
     }
 
-    // 4. Fallback for Unknown Barcodes (Default Pallet)
+    // 4. Fallback for Unknown Barcodes
+    // User Requirement: "only size and dimensions from barcode"
+    // If we couldn't parse it, we return the code but NO dimensions.
+    // The frontend should ask the user to input them manualy.
     if (!responseData) {
         source = 'barcode_fallback';
         responseData = {
-            type: 'standard',
-            dimensions: {
-                length: 1.2,
-                width: 1.2,
-                height: 1.2 // Default standard pallet height
-            },
-            weight: null, // Unknown weight
-            description: `Item ${code}`, // Use the scanned code as the name
+            type: 'custom', // changed from 'standard' to 'custom' to imply manual input needed
+            dimensions: null, // explicitly null
+            weight: null,
+            description: `Item ${code}`,
             reference: code
         };
     }
