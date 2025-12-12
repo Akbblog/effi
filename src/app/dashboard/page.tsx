@@ -226,23 +226,32 @@ export default function Dashboard() {
         }
     };
 
-    const restoreLoad = (load: any) => {
-        setTruck(load.truckConfig);
-        setCargoItems(load.cargoItems);
-        setShowHistory(false);
-        setManualOverrides({});
-    };
+    const handleScan = async (data: string, metadata?: any): Promise<{ success: boolean; isDuplicate?: boolean; message?: string }> => {
+        // Prevent duplicate processing if already scanning
+        // if (loading) return { success: false, message: 'Processing...' };
 
-    useEffect(() => {
-        if (status === 'authenticated') {
-            fetchHistory();
+        // Check for duplicates in current loaded items
+        const isDuplicate = cargoItems.some(item => {
+            // Check against name or if we store the original code somewhere
+            return (item.name || '').includes(data);
+        });
+
+        if (isDuplicate) {
+            return { success: false, isDuplicate: true, message: 'Item already scanned' };
         }
-    }, [status]);
 
-    // QR Scan Handler (Lifted from CargoInputForm)
-    const handleScan = async (data: string): Promise<{ success: boolean; isDuplicate?: boolean; message?: string }> => {
         try {
-            const res = await fetch(`/api/integrations/lookup?code=${encodeURIComponent(data)}`);
+            // New POST API call with metadata
+            const res = await fetch('/api/integrations/lookup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: data,
+                    metadata: metadata || {}
+                })
+            });
             const json = await res.json();
 
             if (json.success && json.data) {

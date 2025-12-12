@@ -12,7 +12,7 @@ type ScanResult =
     | { status: 'processing'; code: string };
 
 interface QRScannerProps {
-    onScan: (data: string) => Promise<{ success: boolean; isDuplicate?: boolean; message?: string }>;
+    onScan: (data: string, metadata?: any) => Promise<{ success: boolean; isDuplicate?: boolean; message?: string }>;
     onClose: () => void;
     scannedCodes?: Set<string>; // Already scanned codes to prevent duplicates
 }
@@ -31,7 +31,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
     const isProcessingRef = useRef(false); // Ref version of isProcessing for stable callbacks
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce for scan callbacks
     const lastDecodeTimeRef = useRef<number>(0); // Track decode timing
-    const processCodeRef = useRef<(code: string) => void>(() => { }); // Stable ref to processCode
+    const processCodeRef = useRef<(code: string, metadata?: any) => void>(() => { }); // Stable ref to processCode
 
     // Normalize barcode - strip whitespace and make uppercase for comparison
     const normalizeCode = (code: string): string => {
@@ -45,7 +45,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
     }, [scannedCodes]);
 
     // Process the scanned code
-    const processCode = useCallback(async (rawCode: string) => {
+    const processCode = useCallback(async (rawCode: string, metadata: any = {}) => {
         // Prevent concurrent processing
         if (processingLockRef.current || hasProcessedRef.current) {
             return;
@@ -99,7 +99,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
             }
 
             // Call the parent handler
-            const result = await onScan(rawCode);
+            const result = await onScan(rawCode, metadata);
 
             if (!mountedRef.current) return;
 
@@ -232,7 +232,7 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                         8,  // EAN_13
                     ]
                 },
-                (decodedText: string) => {
+                (decodedText: string, decodedResult: any) => {
                     // Debounce: ignore rapid-fire decodes (within 300ms)
                     const now = Date.now();
                     if (now - lastDecodeTimeRef.current < 300) {
@@ -250,9 +250,22 @@ export default function QRScanner({ onScan, onClose, scannedCodes = new Set() }:
                         clearTimeout(debounceTimerRef.current);
                     }
 
+                    // Structure the rich metadata
+                    // html5-qrcode returns result with Format, decodedText, and resultPoints
+                    // Some browsers/devices provide result.bounds or result.box
+                    const metadata = {
+                        format: decodedResult?.result?.format?.formatName || 'UNKNOWN',
+                        quality: decodedResult?.result?.format?.quality || null,
+                        points: decodedResult?.resultPoints || [],
+                        // Try to get bounds if available (experimental features)
+                        bounds: decodedResult?.bounds || decodedResult?.box || null,
+                        rawBytes: decodedResult?.result?.rawBytes || null,
+                        timestamp: new Date().toISOString()
+                    };
+
                     // Debounce the processing to avoid rapid state updates
                     debounceTimerRef.current = setTimeout(() => {
-                        processCodeRef.current(decodedText);
+                        processCodeRef.current(decodedText, metadata);
                     }, 50); // Reduced to 50ms for faster response
                 },
                 () => { } // Ignore frame errors silently
