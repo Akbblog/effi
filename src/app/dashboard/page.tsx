@@ -389,7 +389,27 @@ export default function Dashboard() {
                             <div className="flex items-start justify-between">
                                 <div>
                                     <h3 className="text-lg font-semibold">Confirm Scanned Item</h3>
-                                    <p className="text-xs text-gray-500">Code: {scanCandidate.code} • Source: {scanCandidate.source}</p>
+                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                        {scanCandidate.code}
+                                        <span className="text-gray-300">•</span>
+                                        {scanCandidate.source.startsWith('barcode_parsing') ? (
+                                            <span className="text-purple-600 font-medium flex items-center gap-1">
+                                                ✨ Smart Scan
+                                            </span>
+                                        ) : scanCandidate.source === 'sku_db' ? (
+                                            <span className="text-blue-600 font-medium flex items-center gap-1">
+                                                💾 Master SKU
+                                            </span>
+                                        ) : scanCandidate.source === 'carrier_api' ? (
+                                            <span className="text-green-600 font-medium flex items-center gap-1">
+                                                🚚 Carrier API
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-500">
+                                                {scanCandidate.source}
+                                            </span>
+                                        )}
+                                    </p>
                                 </div>
                                 <button onClick={cancelScanCandidate} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
                             </div>

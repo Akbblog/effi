@@ -122,12 +122,11 @@ export async function GET(request: Request) {
         }
     }
 
-    // 3. Fallback: Parse dimensions from the barcode string (Regex Heuristic)
+    // 3. Fallback: Parse dimensions from the barcode string (Regex Heuristic & Fixed Formats)
     if (!responseData) {
-        // Look for patterns like "10x20x30", "1.2x0.8x1.0", "500x400x300"
-        // Regex matches 3 numbers separated by 'x' or '*' or '-'
-        // Captures: 1=L, 2=W, 3=H
-        const dimRegex = /(\d+(?:\.\d+)?)\s*[xX*]\s*(\d+(?:\.\d+)?)\s*[xX*]\s*(\d+(?:\.\d+)?)/;
+        // Strategy A: Regex for explicit dimensions (e.g. "50x50x50", "50-50-50")
+        // Support separators: x, X, *, -, _, ,, space
+        const dimRegex = /(\d+(?:\.\d+)?)\s*[xX*,\-_\s]\s*(\d+(?:\.\d+)?)\s*[xX*,\-_\s]\s*(\d+(?:\.\d+)?)/;
         const match = code.match(dimRegex);
 
         if (match) {
@@ -136,42 +135,53 @@ export async function GET(request: Request) {
             let h = parseFloat(match[3]);
 
             // Heuristic for units:
-            // If any dimension is > 4, assume it's in cm (or mm), because standard pallets/cargo rarely exceed 4m.
-            // Adjust to meters.
+            // If > 4, assume cm (divide by 100) or mm (divide by 1000)
             if (l > 4 || w > 4 || h > 4) {
-                // Double check for mm vs cm?
-                // If > 400, likely mm. If > 4, likely cm.
-                // Simple logic: if > 10, divide by 100 (cm -> m).
-                // If > 1000? maybe mm. Let's stick to cm for > 4 for now as safe bet for "box sizes" which are usually 20-100cm.
-                // A 500mm box = 50cm.
-
-                // Refined Heuristic:
-                // If any dim > 100, assume mm -> divide by 1000
-                // Else if any dim > 4, assume cm -> divide by 100
-
                 if (l > 100 || w > 100 || h > 100) {
-                    l /= 1000;
-                    w /= 1000;
-                    h /= 1000;
+                    l /= 1000; w /= 1000; h /= 1000; // mm
                 } else {
-                    l /= 100;
-                    w /= 100;
-                    h /= 100;
+                    l /= 100; w /= 100; h /= 100; // cm
                 }
             }
 
-            source = 'barcode_parsing';
+            source = 'barcode_parsing_regex';
             responseData = {
                 type: 'custom',
-                dimensions: {
-                    length: parseFloat(l.toFixed(3)),
-                    width: parseFloat(w.toFixed(3)),
-                    height: parseFloat(h.toFixed(3))
-                },
+                dimensions: { length: l, width: w, height: h },
                 weight: null,
-                description: `Item ${match[0]}`, // "Item 50x50x50"
+                description: `Item ${match[0]}`,
                 reference: code
             };
+        }
+
+        // Strategy B: Fixed Length Heuristic (e.g. 7NAT0365976600001)
+        // Assumption: 4 char prefix + 3 digits (L) + 3 digits (W) + 3 digits (H) + suffix
+        // Units: assume mm (standard for fixed width logistics codes)
+        else if (code.length >= 13) {
+            // Check for potential fixed width chunks
+            // Try 17-char format: [4 prefix][3 L][3 W][3 H][4 seq]
+            const fixedMatch = code.match(/^([A-Z0-9]{4})(\d{3})(\d{3})(\d{3})(\d+)/);
+            if (fixedMatch) {
+                const l_mm = parseInt(fixedMatch[2]);
+                const w_mm = parseInt(fixedMatch[3]);
+                const h_mm = parseInt(fixedMatch[4]); // or maybe these are different?
+
+                // Sanity check: ensure they aren't all zero
+                if (l_mm > 0 && w_mm > 0 && h_mm > 0) {
+                    source = 'barcode_parsing_fixed';
+                    responseData = {
+                        type: 'custom',
+                        dimensions: {
+                            length: l_mm / 1000, // mm -> m
+                            width: w_mm / 1000,
+                            height: h_mm / 1000
+                        },
+                        weight: null,
+                        description: `Item ${code.substring(0, 10)}...`,
+                        reference: code
+                    };
+                }
+            }
         }
     }
 
