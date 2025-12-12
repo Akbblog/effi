@@ -207,6 +207,9 @@ export async function POST(request: Request) {
     }
 
     // Log to History if user is authenticated (include resolved metadata and raw payload)
+    /* 
+    // DISABLED: User requested "Scan and Scrap" workflow. 
+    // We only process the dimensions, we do not save the history of every scan.
     if (userId) {
         try {
             await ScanHistory.create({
@@ -220,7 +223,7 @@ export async function POST(request: Request) {
                 source,
                 raw: {
                     code,
-                    metadata,
+                    metadata, 
                     parsed: (() => { try { return JSON.parse(code); } catch (e) { return null; } })()
                 }
             });
@@ -228,6 +231,7 @@ export async function POST(request: Request) {
             console.error('Failed to log scan history:', error);
         }
     }
+    */
 
     return NextResponse.json({
         success: true,
