@@ -36,7 +36,8 @@ export async function GET(request: Request) {
     let responseData = null;
     let source = '';
 
-    // 0. Try SKU DB (GTIN/UPC/EAN) with normalization and alternate barcodes
+    // 0. SKU DB Lookup SKIPPED as per user request ("no master sku")
+    /*
     await dbConnect();
     // Build a set of candidate variants to increase match rate for common barcode formats
     const variants = new Set<string>();
@@ -80,6 +81,7 @@ export async function GET(request: Request) {
             imageUrl: sku.imageUrl || null
         };
     }
+    */
 
     // 1. Check Mock DB (The "Production" way to handle known external IDs)
     const carrierData = MOCK_CARRIER_DB[code];
@@ -158,21 +160,20 @@ export async function GET(request: Request) {
         // Assumption: 4 char prefix + 3 digits (L) + 3 digits (W) + 3 digits (H) + suffix
         // Units: assume mm (standard for fixed width logistics codes)
         else if (code.length >= 13) {
-            // Check for potential fixed width chunks
-            // Try 17-char format: [4 prefix][3 L][3 W][3 H][4 seq]
-            const fixedMatch = code.match(/^([A-Z0-9]{4})(\d{3})(\d{3})(\d{3})(\d+)/);
-            if (fixedMatch) {
-                const l_mm = parseInt(fixedMatch[2]);
-                const w_mm = parseInt(fixedMatch[3]);
-                const h_mm = parseInt(fixedMatch[4]); // or maybe these are different?
+            // 1. Try 17-char format (7NAT...)
+            // Format: [PREFIX:4][L:3][W:3][H:3][SEQ:...]
+            const match17 = code.match(/^([A-Z0-9]{4})(\d{3})(\d{3})(\d{3})(\d+)/);
+            if (match17) {
+                const l_mm = parseInt(match17[2]);
+                const w_mm = parseInt(match17[3]);
+                const h_mm = parseInt(match17[4]);
 
-                // Sanity check: ensure they aren't all zero
                 if (l_mm > 0 && w_mm > 0 && h_mm > 0) {
-                    source = 'barcode_parsing_fixed';
+                    source = 'barcode_parsing_fixed_17';
                     responseData = {
                         type: 'custom',
                         dimensions: {
-                            length: l_mm / 1000, // mm -> m
+                            length: l_mm / 1000,
                             width: w_mm / 1000,
                             height: h_mm / 1000
                         },
@@ -182,10 +183,39 @@ export async function GET(request: Request) {
                     };
                 }
             }
+
+            // 2. Try 13-char format (MS...)
+            // Example: MS58161624002
+            // Format: MS[L:2][W:2][H:2][SEQ:...]
+            // Units: Assume cm (58 = 58cm = 0.58m)
+            if (!responseData && code.startsWith('MS') && code.length === 13) {
+                const match13 = code.match(/^MS(\d{2})(\d{2})(\d{2})(\d+)/);
+                if (match13) {
+                    const l_cm = parseInt(match13[1]);
+                    const w_cm = parseInt(match13[2]);
+                    const h_cm = parseInt(match13[3]);
+
+                    if (l_cm > 0 && w_cm > 0 && h_cm > 0) {
+                        source = 'barcode_parsing_fixed_13';
+                        responseData = {
+                            type: 'custom',
+                            dimensions: {
+                                length: l_cm / 100,
+                                width: w_cm / 100,
+                                height: h_cm / 100
+                            },
+                            weight: null,
+                            description: `Item ${code}`,
+                            reference: code
+                        };
+                    }
+                }
+            }
         }
     }
 
-    // 4. Fallback for Unknown Barcodes / IDs (Default Pallet)
+    // 4. Fallback for Unknown Barcodes (Default Pallet)
+    // Removed DB persistence check as per user request to "remove master sku" features
     if (!responseData) {
         source = 'barcode_fallback';
         responseData = {

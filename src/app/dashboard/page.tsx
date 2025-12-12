@@ -118,8 +118,6 @@ export default function Dashboard() {
         setManualOverrides({});
     };
 
-    // 5. Saving / Loading State
-
     // Section Toggle State
     const [openSection, setOpenSection] = useState<'truck' | 'cargo' | null>(null);
 
@@ -262,7 +260,7 @@ export default function Dashboard() {
     };
 
     // Confirm scan candidate: add to cargoItems and optionally save SKU
-    const confirmScanCandidate = async (opts?: { saveSku?: boolean; name?: string; dimensions?: { length: number; width: number; height: number } }) => {
+    const confirmScanCandidate = async (opts?: { name?: string; dimensions?: { length: number; width: number; height: number } }) => {
         if (!scanCandidate) return;
         const name = opts?.name ?? (scanCandidate.data.description || scanCandidate.data.reference || `Item ${scanCandidate.code}`);
         const dims = opts?.dimensions ?? scanCandidate.data.dimensions ?? { length: 1.2, width: 1.2, height: 1.2 };
@@ -281,41 +279,6 @@ export default function Dashboard() {
         };
 
         handleAddCargo([newItem]);
-
-        // Optionally save to SKU DB (requires admin - server enforces)
-        if (opts?.saveSku) {
-            // Client-side check: only attempt save if current user is admin. Server also enforces admin.
-            // @ts-ignore
-            const isAdmin = session?.user?.role === 'admin';
-            if (!isAdmin) {
-                setSaveStatus('error');
-                setSaveMessage('Only admins can save SKUs.');
-            } else {
-                setSaveStatus('saving');
-                try {
-                    const res = await fetch('/api/sku', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ gtin: scanCandidate.code, name, dimensions: dims, barcodes: [scanCandidate.code] })
-                    });
-                    const json = await res.json().catch(() => null);
-                    if (res.ok && json && json.ok) {
-                        setSaveStatus('success');
-                        setSaveMessage('SKU saved');
-                    } else if (res.status === 403) {
-                        setSaveStatus('error');
-                        setSaveMessage('Forbidden: not an admin');
-                    } else {
-                        setSaveStatus('error');
-                        setSaveMessage((json && json.message) || 'Failed to save SKU');
-                    }
-                } catch (e) {
-                    console.error('Failed to save SKU', e);
-                    setSaveStatus('error');
-                    setSaveMessage('Network error saving SKU');
-                }
-            }
-        }
 
         // Clear candidate
         setScanCandidate(null);
@@ -432,35 +395,11 @@ export default function Dashboard() {
                                         <input type="number" step="0.01" value={modalDims.height} onChange={(e) => setModalDims(d => ({ ...d, height: Number(e.target.value) }))} className="w-full border rounded-md px-2 py-1" />
                                     </div>
                                 </div>
-
-                                <div className="flex items-center gap-2">
-                                    {/* Disable the checkbox for non-admin users */}
-                                    {/* @ts-ignore */}
-                                    <input id="saveSku" type="checkbox" checked={saveSkuOnConfirm} onChange={(e) => setSaveSkuOnConfirm(e.target.checked)} disabled={session?.user?.role !== 'admin'} />
-                                    <label htmlFor="saveSku" className="text-sm text-gray-700">Save this item to SKU master</label>
-                                    { /* show a small helper when not admin */}
-                                    { /* @ts-ignore */}
-                                    {session?.user?.role !== 'admin' && (
-                                        <span className="text-xs text-gray-400 italic ml-2">(Admin only)</span>
-                                    )}
-                                </div>
                             </div>
 
                             <div className="mt-5 flex items-center justify-end gap-3">
                                 <button onClick={cancelScanCandidate} className="px-4 py-2 rounded-md border border-gray-200 text-sm">Cancel</button>
-                                <button onClick={() => confirmScanCandidate({ saveSku: saveSkuOnConfirm, name: modalName, dimensions: modalDims })} className="px-4 py-2 rounded-md bg-red-600 text-white text-sm">Confirm & Add</button>
-                            </div>
-                            {/* Save feedback */}
-                            <div className="mt-3">
-                                {saveStatus === 'saving' && (
-                                    <div className="flex items-center gap-2 text-sm text-gray-600"><Loader2 className="w-4 h-4 animate-spin" /> Saving SKU...</div>
-                                )}
-                                {saveStatus === 'success' && (
-                                    <div className="text-sm text-green-600">{saveMessage || 'Saved'}</div>
-                                )}
-                                {saveStatus === 'error' && (
-                                    <div className="text-sm text-red-600">{saveMessage || 'Save failed'}</div>
-                                )}
+                                <button onClick={() => confirmScanCandidate({ name: modalName, dimensions: modalDims })} className="px-4 py-2 rounded-md bg-red-600 text-white text-sm">Confirm & Add</button>
                             </div>
                         </motion.div>
                     </motion.div>
